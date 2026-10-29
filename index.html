@@ -1,12 +1,173 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Мои тесты</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Тесты для учащихся колледжа</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+      overflow: hidden;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background:
+        radial-gradient(circle at 15% 20%, #254b80 0, transparent 35%),
+        radial-gradient(circle at 85% 80%, #563b91 0, transparent 35%),
+        linear-gradient(135deg, #101b35, #172747 55%, #11152f);
+      color: white;
+    }
+
+    .decoration {
+      position: absolute;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .circle-one {
+      width: 360px;
+      height: 360px;
+      top: -150px;
+      right: -100px;
+    }
+
+    .circle-two {
+      width: 500px;
+      height: 500px;
+      bottom: -300px;
+      left: -150px;
+    }
+
+    .card {
+      position: relative;
+      width: min(760px, 100%);
+      padding: clamp(35px, 7vw, 75px) 25px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.17);
+      border-radius: 28px;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25);
+      backdrop-filter: blur(14px);
+      animation: appear 1s ease-out;
+    }
+
+    .symbol {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 76px;
+      height: 76px;
+      margin-bottom: 28px;
+      border-radius: 22px;
+      background: linear-gradient(135deg, #76d8ff, #9b8aff);
+      color: #142344;
+      font-size: 38px;
+      font-weight: 700;
+      box-shadow: 0 10px 30px rgba(118, 216, 255, 0.2);
+    }
+
+    h1 {
+      font-size: clamp(30px, 5.5vw, 52px);
+      line-height: 1.2;
+      font-weight: 700;
+      letter-spacing: -1px;
+      margin-bottom: 22px;
+    }
+
+    h1 span {
+      color: #9bdfff;
+    }
+
+    .subtitle {
+      max-width: 480px;
+      margin: 0 auto;
+      color: #c4d1e8;
+      font-size: clamp(16px, 2.5vw, 19px);
+      line-height: 1.7;
+    }
+
+    .line {
+      width: 80px;
+      height: 4px;
+      margin: 30px auto 0;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #76d8ff, #a58bff);
+    }
+
+    .footer {
+      position: absolute;
+      bottom: 20px;
+      left: 0;
+      width: 100%;
+      text-align: center;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 13px;
+    }
+
+    @keyframes appear {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .card {
+        border-radius: 22px;
+      }
+
+      .symbol {
+        width: 64px;
+        height: 64px;
+        font-size: 32px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .card {
+        animation: none;
+      }
+    }
+  </style>
 </head>
+
 <body>
-  <h1>Мои тесты для студентов</h1>
-  <p>Моё пространство для тестов по разным дисциплинам.</p>
+  <div class="decoration circle-one"></div>
+  <div class="decoration circle-two"></div>
+
+  <main class="card">
+    <div class="symbol" aria-hidden="true">✓</div>
+
+    <h1>
+      Тесты для учащихся<br>
+      <span>колледжа</span>
+    </h1>
+
+    <p class="subtitle">
+      Пространство для проверки знаний,
+      развития навыков и новых достижений.
+    </p>
+
+    <div class="line"></div>
+  </main>
+
+  <footer class="footer">
+    Образовательное пространство
+  </footer>
 </body>
 </html>
