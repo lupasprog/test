@@ -324,12 +324,6 @@
             background: rgba(16, 185, 129, 0.08);
             color: var(--success);
         }
-
-        .correct-ans {
-            background: rgba(16, 185, 129, 0.12);
-            color: var(--success);
-            font-weight: 600;
-        }
     </style>
 </head>
 <body>
@@ -434,70 +428,71 @@
     </div>
 
     <script>
-        function safeEncode(str) {
-            return str.split('').map(c => (c.charCodeAt(0) + 13).toString(16)).join('-');
-        }
-        function safeDecode(str) {
-            return str.split('-').map(h => String.fromCharCode(parseInt(h, 16) - 13)).join('');
+        // Хэширование SHA-256 для защиты ответов от DevTools (F12)
+        async function sha256(str) {
+            const buffer = new TextEncoder().encode(str + "_secure_salt_2026");
+            const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
-        // БАНК ИЗ 50 ВОПРОСОВ (все спецсимволы тегов заэкранированы сущностями &lt; &gt;)
+        // БАНК ИЗ 50 ВОПРОСОВ (БЕЗ ОТКРЫТЫХ ОТВЕТОВ В КОДЕ)
         const masterQuestionBank = [
-            { id: 1, type: "input", text: "Какой тег используется для создания самого крупного заголовка?", secret: safeEncode("h1"), hintDisplay: "h1" },
-            { id: 2, type: "input", text: "Укажите имя парного тега для создания обычного абзаца.", secret: safeEncode("p"), hintDisplay: "p" },
-            { id: 3, type: "input", text: "Какой обязательный атрибут тега &lt;img&gt; указывает путь к файлу изображения?", secret: safeEncode("src"), hintDisplay: "src" },
-            { id: 4, type: "input", text: "Напишите имя тега для переноса строки без создания нового абзаца.", secret: safeEncode("br"), hintDisplay: "br" },
-            { id: 5, type: "input", text: "Какой корневой тег оборачивает все ячейки и строки таблицы?", secret: safeEncode("table"), hintDisplay: "table" },
-            { id: 6, type: "input", text: "Какой тег задает заголовочную ячейку таблицы?", secret: safeEncode("th"), hintDisplay: "th" },
-            { id: 7, type: "input", text: "Какой тег используется для отображения нижнего индекса (например, в H2O)?", secret: safeEncode("sub"), hintDisplay: "sub" },
-            { id: 8, type: "input", text: "Какой тег используется для отображения верхнего индекса (степени)?", secret: safeEncode("sup"), hintDisplay: "sup" },
-            { id: 9, type: "input", text: "Напишите название атрибута для объединения колонок таблицы.", secret: safeEncode("colspan"), hintDisplay: "colspan" },
-            { id: 10, type: "input", text: "Напишите название атрибута для объединения строк таблицы.", secret: safeEncode("rowspan"), hintDisplay: "rowspan" },
-            { id: 11, type: "input", text: "Какой атрибут в теге &lt;img&gt; задает альтернативный текст для картинки?", secret: safeEncode("alt"), hintDisplay: "alt" },
-            { id: 12, type: "input", text: "Какой тег используется для создания горизонтальной разделительной линии?", secret: safeEncode("hr"), hintDisplay: "hr" },
-            { id: 13, type: "input", text: "Какой тег оборачивает отдельный элемент любого списка?", secret: safeEncode("li"), hintDisplay: "li" },
-            { id: 14, type: "input", text: "Какой тег создает стандартную ячейку данных в таблице?", secret: safeEncode("td"), hintDisplay: "td" },
-            { id: 15, type: "input", text: "Какой тег используется для создания строки таблицы?", secret: safeEncode("tr"), hintDisplay: "tr" },
+            { id: 1, type: "input", text: "Какой тег используется для создания самого крупного заголовка?", hash: "26615b3e21ef2ef1fb1f2cbe5371c35626500bc706db0d072eb9f0bc835cfed5" },
+            { id: 2, type: "input", text: "Укажите имя парного тега для создания обычного абзаца.", hash: "ca58f5509cf6e02613d78c3b2f5d72f9d3b76bb04ceb1eb07d2c3dfbdf57b54a" },
+            { id: 3, type: "input", text: "Какой обязательный атрибут тега &lt;img&gt; указывает путь к файлу изображения?", hash: "ef6093cb7fa3aa76b772ae8d5bf878bf2d2cce918ed983636f8888b56fcdb70e" },
+            { id: 4, type: "input", text: "Напишите имя тега для переноса строки без создания нового абзаца.", hash: "8bc3387eb7203b9ad6d34b426f8d0963ae94ea4f90c42730303be188dfaa6c29" },
+            { id: 5, type: "input", text: "Какой корневой тег оборачивает все ячейки и строки таблицы?", hash: "4c749eb40375dc0ee9a071dcfccba9ea93e3d47ff3a357731737be26868615bb" },
+            { id: 6, type: "input", text: "Какой тег задает заголовочную ячейку таблицы?", hash: "dcbf935fa7c8dbe68494c256a422eb7fa0dc6b2316e6d1822be8ce04a79df201" },
+            { id: 7, type: "input", text: "Какой тег используется для отображения нижнего индекса (например, в H2O)?", hash: "9566a7b7d0be0bfdc14b62143b81781ebca55b552d431f0cf3fefb09ecfb6ef5" },
+            { id: 8, type: "input", text: "Какой тег используется для отображения верхнего индекса (степени)?", hash: "9e1ed699f8d95191bfdfb9b657fb364aa5cfcd65b4c4fa66c30e71ef3b584a29" },
+            { id: 9, type: "input", text: "Напишите название атрибута для объединения колонок таблицы.", hash: "5bb7424dcaf339c65636384db15aa9fc03f90b1473cd68cbdf1ae77ecbebd9eb" },
+            { id: 10, type: "input", text: "Напишите название атрибута для объединения строк таблицы.", hash: "5d01aa8fcfc3070cd0fbff4c1cce8a30db9d2bbf40e022513ce4608c0ef0cb2c" },
+            { id: 11, type: "input", text: "Какой атрибут в теге &lt;img&gt; задает альтернативный текст для картинки?", hash: "d0aeb66d860d5c065f4d1e2e36b80153efbb80a13d7890a501bf026367f08c36" },
+            { id: 12, type: "input", text: "Какой тег используется для создания горизонтальной разделительной линии?", hash: "44e26cebd13bdffb2db0a8bc0ef270bdca08bf377f80f9bb16d82fbfa0a38d72" },
+            { id: 13, type: "input", text: "Какой тег оборачивает отдельный элемент любого списка?", hash: "9dddfbd4d8ed2e6834ff749f78ccfeaaedca4ed7289ee0793165b4676be39999" },
+            { id: 14, type: "input", text: "Какой тег создает стандартную ячейку данных в таблице?", hash: "80ddff5fbd295ae535ef6443c6ecdc35bcbf0912f2ee960fe69766bb73ee3e2c" },
+            { id: 15, type: "input", text: "Какой тег используется для создания строки таблицы?", hash: "f3c3a45c3ec0b2b8ff83c6c06a3e7db269c3a36db560a8cf2dc8bca56d8170c8" },
 
-            { id: 16, type: "boolean", text: "Тег &lt;br&gt; является одиночным и не требует закрывающего тега.", secret: safeEncode("Верно"), hintDisplay: "Верно" },
-            { id: 17, type: "boolean", text: "Тег &lt;img&gt; требует обязательного закрывающего тега &lt;/img&gt;.", secret: safeEncode("Неверно"), hintDisplay: "Неверно" },
-            { id: 18, type: "boolean", text: "Элементы &lt;li&gt; можно использовать только внутри &lt;ol&gt; или &lt;ul&gt;.", secret: safeEncode("Верно"), hintDisplay: "Верно" },
-            { id: 19, type: "boolean", text: "Спецификация HTML запрещает вкладывать один список внутрь другого.", secret: safeEncode("Неверно"), hintDisplay: "Неверно" },
-            { id: 20, type: "boolean", text: "Атрибут alt у тега &lt;img&gt; отображается, если картинка не загрузилась.", secret: safeEncode("Верно"), hintDisplay: "Верно" },
-            { id: 21, type: "boolean", text: "Тег &lt;strong&gt; делает текст полужирным и подчеркивает его важность.", secret: safeEncode("Верно"), hintDisplay: "Верно" },
-            { id: 22, type: "boolean", text: "Тег &lt;em&gt; используется только для изменения цвета текста.", secret: safeEncode("Неверно"), hintDisplay: "Неверно" },
-            { id: 23, type: "boolean", text: "Тег &lt;table&gt; может функционировать без строк &lt;tr&gt;.", secret: safeEncode("Неверно"), hintDisplay: "Неверно" },
-            { id: 24, type: "boolean", text: "Тег &lt;a&gt; используется для вставки изображений.", secret: safeEncode("Неверно"), hintDisplay: "Неверно" },
-            { id: 25, type: "boolean", text: "Атрибуты width и height задают размеры картинки в пикселях.", secret: safeEncode("Верно"), hintDisplay: "Верно" },
+            { id: 16, type: "boolean", text: "Тег &lt;br&gt; является одиночным и не требует закрывающего тега.", hash: "2ff4c6ea3c0a5e2f75476a6d68ea8245b9a896d860163351d4eb3d0a6aa2016f" },
+            { id: 17, type: "boolean", text: "Тег &lt;img&gt; требует обязательного закрывающего тега &lt;/img&gt;.", hash: "4190c42750e3ce1c8d5ea2f37803a6cce32d1858e77a1ca9fe877dcf8e51b1f8" },
+            { id: 18, type: "boolean", text: "Элементы &lt;li&gt; можно использовать только внутри &lt;ol&gt; или &lt;ul&gt;.", hash: "2ff4c6ea3c0a5e2f75476a6d68ea8245b9a896d860163351d4eb3d0a6aa2016f" },
+            { id: 19, type: "boolean", text: "Спецификация HTML запрещает вкладывать один список внутрь другого.", hash: "4190c42750e3ce1c8d5ea2f37803a6cce32d1858e77a1ca9fe877dcf8e51b1f8" },
+            { id: 20, type: "boolean", text: "Атрибут alt у тега &lt;img&gt; отображается, если картинка не загрузилась.", hash: "2ff4c6ea3c0a5e2f75476a6d68ea8245b9a896d860163351d4eb3d0a6aa2016f" },
+            { id: 21, type: "boolean", text: "Тег &lt;strong&gt; делает текст полужирным и подчеркивает его важность.", hash: "2ff4c6ea3c0a5e2f75476a6d68ea8245b9a896d860163351d4eb3d0a6aa2016f" },
+            { id: 22, type: "boolean", text: "Тег &lt;em&gt; используется только для изменения цвета текста.", hash: "4190c42750e3ce1c8d5ea2f37803a6cce32d1858e77a1ca9fe877dcf8e51b1f8" },
+            { id: 23, type: "boolean", text: "Тег &lt;table&gt; может функционировать без строк &lt;tr&gt;.", hash: "4190c42750e3ce1c8d5ea2f37803a6cce32d1858e77a1ca9fe877dcf8e51b1f8" },
+            { id: 24, type: "boolean", text: "Тег &lt;a&gt; используется для вставки изображений.", hash: "4190c42750e3ce1c8d5ea2f37803a6cce32d1858e77a1ca9fe877dcf8e51b1f8" },
+            { id: 25, type: "boolean", text: "Атрибуты width и height задают размеры картинки в пикселях.", hash: "2ff4c6ea3c0a5e2f75476a6d68ea8245b9a896d860163351d4eb3d0a6aa2016f" },
 
-            { id: 26, type: "single", text: "Какой тег создает маркированный (ненумерованный) список?", options: ["&lt;ol&gt;", "&lt;ul&gt;", "&lt;list&gt;", "&lt;dl&gt;"], secret: safeEncode("&lt;ul&gt;"), hintDisplay: "&lt;ul&gt;" },
-            { id: 27, type: "single", text: "Какой тег создает нумерованный список?", options: ["&lt;ul&gt;", "&lt;ol&gt;", "&lt;nl&gt;", "&lt;list&gt;"], secret: safeEncode("&lt;ol&gt;"), hintDisplay: "&lt;ol&gt;" },
-            { id: 28, type: "single", text: "Какой тег группирует заголовочную часть таблицы?", options: ["&lt;thead&gt;", "&lt;tbody&gt;", "&lt;tfoot&gt;", "&lt;header&gt;"], secret: safeEncode("&lt;thead&gt;"), hintDisplay: "&lt;thead&gt;" },
-            { id: 29, type: "single", text: "Какой тег создает отдельную строку таблицы?", options: ["&lt;td&gt;", "&lt;th&gt;", "&lt;tr&gt;", "&lt;row&gt;"], secret: safeEncode("&lt;tr&gt;"), hintDisplay: "&lt;tr&gt;" },
-            { id: 30, type: "single", text: "Какой тег используется для выделения текста фоновым цветом по умолчанию?", options: ["&lt;mark&gt;", "&lt;color&gt;", "&lt;highlight&gt;", "&lt;paint&gt;"], secret: safeEncode("&lt;mark&gt;"), hintDisplay: "&lt;mark&gt;" },
-            { id: 31, type: "single", text: "Какой тег задает самый мелкий заголовок из доступных?", options: ["&lt;h1&gt;", "&lt;h3&gt;", "&lt;h6&gt;", "&lt;h8&gt;"], secret: safeEncode("&lt;h6&gt;"), hintDisplay: "&lt;h6&gt;" },
-            { id: 32, type: "single", text: "Какой тег оборачивает тело таблицы с основными данными?", options: ["&lt;tbody&gt;", "&lt;thead&gt;", "&lt;tfoot&gt;", "&lt;content&gt;"], secret: safeEncode("&lt;tbody&gt;"), hintDisplay: "&lt;tbody&gt;" },
-            { id: 33, type: "single", text: "Какой тег используется для отображения зачеркнутого текста?", options: ["&lt;s&gt;", "&lt;u&gt;", "&lt;sub&gt;", "&lt;ins&gt;"], secret: safeEncode("&lt;s&gt;"), hintDisplay: "&lt;s&gt;" },
-            { id: 34, type: "single", text: "Какой тег делает текст подчеркнутым?", options: ["&lt;u&gt;", "&lt;i&gt;", "&lt;b&gt;", "&lt;mark&gt;"], secret: safeEncode("&lt;u&gt;"), hintDisplay: "&lt;u&gt;" },
-            { id: 35, type: "single", text: "Где должен находиться тег &lt;caption&gt; в таблице?", options: ["Сразу после открытия &lt;table&gt;", "Внутри &lt;tr&gt;", "После &lt;/table&gt;", "Внутри &lt;td&gt;"], secret: safeEncode("Сразу после открытия &lt;table&gt;"), hintDisplay: "Сразу после открытия &lt;table&gt;" },
+            { id: 26, type: "single", text: "Какой тег создает маркированный (ненумерованный) список?", options: ["&lt;ol&gt;", "&lt;ul&gt;", "&lt;list&gt;", "&lt;dl&gt;"], hash: "b21dc3381e59fe23bf41ea3d84f23bdf2d5ec7120c42a2d46e3ea4aef5cd981d" },
+            { id: 27, type: "single", text: "Какой тег создает нумерованный список?", options: ["&lt;ul&gt;", "&lt;ol&gt;", "&lt;nl&gt;", "&lt;list&gt;"], hash: "ccb3fc7eb5fe57e9fe5565e3ef542cfb400d3674cfcfef0ec3fa9bd5f385c709" },
+            { id: 28, type: "single", text: "Какой тег группирует заголовочную часть таблицы?", options: ["&lt;thead&gt;", "&lt;tbody&gt;", "&lt;tfoot&gt;", "&lt;header&gt;"], hash: "52dff800fc48b61e27ea7dbe89052ea74bc4feccf0ec034bf5f939db4cb8c11e" },
+            { id: 29, type: "single", text: "Какой тег создает отдельную строку таблицы?", options: ["&lt;td&gt;", "&lt;th&gt;", "&lt;tr&gt;", "&lt;row&gt;"], hash: "01dd5929bdff7012bcfe1dbceb5df01aa12be40f878a2ebbf34f4cf8bf188f61" },
+            { id: 30, type: "single", text: "Какой тег используется для выделения текста фоновым цветом по умолчанию?", options: ["&lt;mark&gt;", "&lt;color&gt;", "&lt;highlight&gt;", "&lt;paint&gt;"], hash: "7402634d026bd6c7476579b189ff4cbb555dc939ca9f0d1aeef0f40d1f77d33b" },
+            { id: 31, type: "single", text: "Какой тег задает самый мелкий заголовок из доступных?", options: ["&lt;h1&gt;", "&lt;h3&gt;", "&lt;h6&gt;", "&lt;h8&gt;"], hash: "ee831dbcc2ecaa5eeac6e6c1e57c6b5478ce1cc0dd4bf3389025cead7c7b8c71" },
+            { id: 32, type: "single", text: "Какой тег оборачивает тело таблицы с основными данными?", options: ["&lt;tbody&gt;", "&lt;thead&gt;", "&lt;tfoot&gt;", "&lt;content&gt;"], hash: "cb2f116aef7fc0f089da3bda9ec8ea5bcfa728c045b74681640539edfa3f92b3" },
+            { id: 33, type: "single", text: "Какой тег используется для отображения зачеркнутого текста?", options: ["&lt;s&gt;", "&lt;u&gt;", "&lt;sub&gt;", "&lt;ins&gt;"], hash: "3e5a7b63f7211bfdb34d9200445d064dd0aa5d37df63f25d97f5987163f5c76c" },
+            { id: 34, type: "single", text: "Какой тег делает текст подчеркнутым?", options: ["&lt;u&gt;", "&lt;i&gt;", "&lt;b&gt;", "&lt;mark&gt;"], hash: "efae5e933e387f3dd6c3214da3f8e6c43c1ee5766289b4b0a4ec3e6a4b18c5e0" },
+            { id: 35, type: "single", text: "Где должен находиться тег &lt;caption&gt; в таблице?", options: ["Сразу после открытия &lt;table&gt;", "Внутри &lt;tr&gt;", "После &lt;/table&gt;", "Внутри &lt;td&gt;"], hash: "250fa9e394f9eddbcfd361ef561dd8a49c9ebfe35cd92db21c56ed5ca19888aa" },
 
-            { id: 36, type: "multiple", text: "Какие теги делают текст полужирным? (Выберите все)", options: ["&lt;b&gt;", "&lt;strong&gt;", "&lt;i&gt;", "&lt;em&gt;"], secret: safeEncode("&lt;b&gt;|&lt;strong&gt;"), hintDisplay: "&lt;b&gt;, &lt;strong&gt;" },
-            { id: 37, type: "multiple", text: "Какие атрибуты задают размеры изображения прямо в теге &lt;img&gt;?", options: ["width", "height", "size", "length"], secret: safeEncode("height|width"), hintDisplay: "height, width" },
-            { id: 38, type: "multiple", text: "Какие из перечисленных тегов являются одиночными (непарными)?", options: ["&lt;img&gt;", "&lt;br&gt;", "&lt;hr&gt;", "&lt;p&gt;"], secret: safeEncode("&lt;br&gt;|&lt;hr&gt;|&lt;img&gt;"), hintDisplay: "&lt;br&gt;, &lt;hr&gt;, &lt;img&gt;" },
-            { id: 39, type: "multiple", text: "Какие теги используются для визуального наклона текста (курсива)?", options: ["&lt;i&gt;", "&lt;em&gt;", "&lt;b&gt;", "&lt;u&gt;"], secret: safeEncode("&lt;em&gt;|&lt;i&gt;"), hintDisplay: "&lt;em&gt;, &lt;i&gt;" },
-            { id: 40, type: "multiple", text: "Какие теги являются элементами структуры таблицы?", options: ["&lt;tr&gt;", "&lt;td&gt;", "&lt;th&gt;", "&lt;li&gt;"], secret: safeEncode("&lt;td&gt;|&lt;th&gt;|&lt;tr&gt;"), hintDisplay: "&lt;td&gt;, &lt;th&gt;, &lt;tr&gt;" },
+            { id: 36, type: "multiple", text: "Какие теги делают текст полужирным? (Выберите все)", options: ["&lt;b&gt;", "&lt;strong&gt;", "&lt;i&gt;", "&lt;em&gt;"], hash: "9bb689f92e4e8a867b93a0ca3e7f4c56834ff04ff7e1d53066eb96ff1fa360df" },
+            { id: 37, type: "multiple", text: "Какие атрибуты задают размеры изображения прямо в теге &lt;img&gt;?", options: ["width", "height", "size", "length"], hash: "8ceca6fcd3935a6edfc6ea6fe87ef1c0f0e0df63a5472dc060b1e42dd6b595cb" },
+            { id: 38, type: "multiple", text: "Какие из перечисленных тегов являются одиночными (непарными)?", options: ["&lt;img&gt;", "&lt;br&gt;", "&lt;hr&gt;", "&lt;p&gt;"], hash: "023ea9275cbef6caea88df638a16b9b1d9bfcf0c79fbe549e4d6d63bbca2c505" },
+            { id: 39, type: "multiple", text: "Какие теги используются для визуального наклона текста (курсива)?", options: ["&lt;i&gt;", "&lt;em&gt;", "&lt;b&gt;", "&lt;u&gt;"], secret: "fcd5414f0e7d5ef3c563d762e557ee6e54f7678e8b09ff2bc70d30ca24e622b3" },
+            { id: 40, type: "multiple", text: "Какие теги являются элементами структуры таблицы?", options: ["&lt;tr&gt;", "&lt;td&gt;", "&lt;th&gt;", "&lt;li&gt;"], hash: "e85ce30d9cbddfe66c1f1ec7f5bdc2ff3dd8dcd1db721d5a7efd27a42ec3cb65" },
 
-            { id: 41, type: "match", text: "Сопоставьте теги списков с их назначением:", pairs: [ {left: "&lt;ul&gt;", right: "Маркированный список"}, {left: "&lt;ol&gt;", right: "Нумерованный список"}, {left: "&lt;li&gt;", right: "Элемент списка"} ], secret: safeEncode("&lt;ul&gt;:Маркированный список|&lt;ol&gt;:Нумерованный список|&lt;li&gt;:Элемент списка"), hintDisplay: "&lt;ul&gt; → Маркированный список<br>&lt;ol&gt; → Нумерованный список<br>&lt;li&gt; → Элемент списка" },
-            { id: 42, type: "match", text: "Сопоставьте теги таблиц с их структурой:", pairs: [ {left: "&lt;tr&gt;", right: "Строка таблицы"}, {left: "&lt;td&gt;", right: "Ячейка данных"}, {left: "&lt;th&gt;", right: "Ячейка заголовка"} ], secret: safeEncode("&lt;tr&gt;:Строка таблицы|&lt;td&gt;:Ячейка данных|&lt;th&gt;:Ячейка заголовка"), hintDisplay: "&lt;tr&gt; → Строка таблицы<br>&lt;td&gt; → Ячейка данных<br>&lt;th&gt; → Ячейка заголовка" },
-            { id: 43, type: "match", text: "Сопоставьте атрибуты с их назначением:", pairs: [ {left: "src", right: "Путь к файлу"}, {left: "alt", right: "Альтернативный текст"}, {left: "colspan", right: "Объединение колонок"} ], secret: safeEncode("src:Путь к файлу|alt:Альтернативный текст|colspan:Объединение колонок"), hintDisplay: "src → Путь к файлу<br>alt → Альтернативный текст<br>colspan → Объединение колонок" },
-            { id: 44, type: "match", text: "Сопоставьте теги форматирования с эффектом:", pairs: [ {left: "&lt;b&gt;", right: "Полужирный"}, {left: "&lt;i&gt;", right: "Курсив"}, {left: "&lt;sub&gt;", right: "Нижний индекс"} ], secret: safeEncode("&lt;b&gt;:Полужирный|&lt;i&gt;:Курсив|&lt;sub&gt;:Нижний индекс"), hintDisplay: "&lt;b&gt; → Полужирный<br>&lt;i&gt; → Курсив<br>&lt;sub&gt; → Нижний индекс" },
-            { id: 45, type: "match", text: "Сопоставьте секции таблицы:", pairs: [ {left: "&lt;thead&gt;", right: "Заголовок таблицы"}, {left: "&lt;tbody&gt;", right: "Тело таблицы"}, {left: "&lt;tfoot&gt;", right: "Подвал таблицы"} ], secret: safeEncode("&lt;thead&gt;:Заголовок таблицы|&lt;tbody&gt;:Тело таблицы|&lt;tfoot&gt;:Подвал таблицы"), hintDisplay: "&lt;thead&gt; → Заголовок таблицы<br>&lt;tbody&gt; → Тело таблицы<br>&lt;tfoot&gt; → Подвал таблицы" },
+            { id: 41, type: "match", text: "Сопоставьте теги списков с их назначением:", pairs: [ {left: "&lt;ul&gt;", right: "Маркированный список"}, {left: "&lt;ol&gt;", right: "Нумерованный список"}, {left: "&lt;li&gt;", right: "Элемент списка"} ], hash: "d8bb5a6914596eefeb244bbdc3e3a4792621ecb8aa75199ffec4ebef82eb4db6" },
+            { id: 42, type: "match", text: "Сопоставьте теги таблиц с их структурой:", pairs: [ {left: "&lt;tr&gt;", right: "Строка таблицы"}, {left: "&lt;td&gt;", right: "Ячейка данных"}, {left: "&lt;th&gt;", right: "Ячейка заголовка"} ], hash: "f9dfbbbc9dc3eb0ea318f75ff326ec2fbd1e6bb81080aa3cbdfdc4004a55dc03" },
+            { id: 43, type: "match", text: "Сопоставьте атрибуты с их назначением:", pairs: [ {left: "src", right: "Путь к файлу"}, {left: "alt", right: "Альтернативный текст"}, {left: "colspan", right: "Объединение колонок"} ], hash: "740e53a251ed7dbe4fef94c633a681df034beaa01f5bf94a11be2e684eb250ae" },
+            { id: 44, type: "match", text: "Сопоставьте теги форматирования с эффектом:", pairs: [ {left: "&lt;b&gt;", right: "Полужирный"}, {left: "&lt;i&gt;", right: "Курсив"}, {left: "&lt;sub&gt;", right: "Нижний индекс"} ], hash: "0d9441a1343f7f8fe32b90ceb6ec7fbd9d7cfec5d4409395f87b8f04edc0b057" },
+            { id: 45, type: "match", text: "Сопоставьте секции таблицы:", pairs: [ {left: "&lt;thead&gt;", right: "Заголовок таблицы"}, {left: "&lt;tbody&gt;", right: "Тело таблицы"}, {left: "&lt;tfoot&gt;", right: "Подвал таблицы"} ], hash: "d8858a3683a38ea3db18a7c2ed776c59b62a69d2d0c64ebbc9daaa818ff9fa4e" },
 
-            { id: 46, type: "single", text: "Какое расширение файла стандартно для HTML-документов?", options: [".html", ".txt", ".css", ".js"], secret: safeEncode(".html"), hintDisplay: ".html" },
-            { id: 47, type: "boolean", text: "Тег &lt;sub&gt; опускает текст ниже основной строки.", secret: safeEncode("Верно"), hintDisplay: "Верно" },
-            { id: 48, type: "single", text: "Какой атрибут объединяет ячейки по вертикали (строки)?", options: ["rowspan", "colspan", "rowmerge", "span"], secret: safeEncode("rowspan"), hintDisplay: "rowspan" },
-            { id: 49, type: "input", text: "Какой тег выводит подпись/заголовок таблицы?", secret: safeEncode("caption"), hintDisplay: "caption" },
-            { id: 50, type: "boolean", text: "Тег &lt;sup&gt; используется для формул вида X² (степень).", secret: safeEncode("Верно"), hintDisplay: "Верно" }
+            { id: 46, type: "single", text: "Какое расширение файла стандартно для HTML-документов?", options: [".html", ".txt", ".css", ".js"], hash: "f35a4d34cb012a61d85834e5dbb03884cfb7ff09bc30ce0e99ca550b71e16fdf" },
+            { id: 47, type: "boolean", text: "Тег &lt;sub&gt; опускает текст ниже основной строки.", hash: "2ff4c6ea3c0a5e2f75476a6d68ea8245b9a896d860163351d4eb3d0a6aa2016f" },
+            { id: 48, type: "single", text: "Какой атрибут объединяет ячейки по вертикали (строки)?", options: ["rowspan", "colspan", "rowmerge", "span"], hash: "5d01aa8fcfc3070cd0fbff4c1cce8a30db9d2bbf40e022513ce4608c0ef0cb2c" },
+            { id: 49, type: "input", text: "Какой тег выводит подпись/заголовок таблицы?", hash: "0c78a0b07e7efbbef53f06cb7505ed626be4ee99c3349c2567c9c0f9da70cece" },
+            { id: 50, type: "boolean", text: "Тег &lt;sup&gt; используется для формул вида X² (степень).", hash: "2ff4c6ea3c0a5e2f75476a6d68ea8245b9a896d860163351d4eb3d0a6aa2016f" }
         ];
 
         let studentInfo = {};
@@ -719,7 +714,7 @@
             return String(str || '').toLowerCase().replace(/&lt;/g, '').replace(/&gt;/g, '').replace(/[<>]/g, '').trim();
         }
 
-        function finishQuiz() {
+        async function finishQuiz() {
             clearInterval(timerInterval);
             quizScreen.classList.add('hidden');
             resultScreen.classList.remove('hidden');
@@ -728,25 +723,20 @@
             const reportSection = document.getElementById('reportSection');
             reportSection.innerHTML = '';
 
-            activeQuestions.forEach((q, idx) => {
+            for (let idx = 0; idx < activeQuestions.length; idx++) {
+                const q = activeQuestions[idx];
                 const uAns = userAnswers[idx];
                 let isCorrect = false;
                 let userDisplayAns = "Нет ответа";
-                const realCorrectAns = safeDecode(q.secret);
+                let userNormStr = "";
 
-                if (q.type === 'input') {
-                    userDisplayAns = uAns ? uAns.trim() : "Нет ответа";
-                    isCorrect = normalizeString(userDisplayAns) === normalizeString(realCorrectAns);
-                } else if (q.type === 'boolean' || q.type === 'single') {
-                    userDisplayAns = uAns || "Нет ответа";
-                    isCorrect = normalizeString(userDisplayAns) === normalizeString(realCorrectAns);
+                if (q.type === 'input' || q.type === 'boolean' || q.type === 'single') {
+                    userDisplayAns = uAns ? String(uAns).trim() : "Нет ответа";
+                    userNormStr = normalizeString(userDisplayAns);
                 } else if (q.type === 'multiple') {
                     const uArr = Array.isArray(uAns) ? uAns : [];
                     userDisplayAns = uArr.length > 0 ? uArr.join(', ') : "Нет ответа";
-                    
-                    const userNorm = uArr.map(normalizeString).sort().join('|');
-                    const correctNorm = realCorrectAns.split('|').map(normalizeString).sort().join('|');
-                    isCorrect = userNorm === correctNorm;
+                    userNormStr = uArr.map(normalizeString).sort().join('|');
                 } else if (q.type === 'match') {
                     let uPairs = [];
                     let userFormattedPairs = [];
@@ -758,12 +748,16 @@
                     });
 
                     userDisplayAns = uAns ? userFormattedPairs.join('<br>') : "Нет ответа";
-                    const userMatchStr = uPairs.map(normalizeString).join('|');
-                    const correctMatchStr = realCorrectAns.split('|').map(normalizeString).join('|');
-                    isCorrect = userMatchStr === correctMatchStr;
+                    userNormStr = uPairs.map(normalizeString).join('|');
                 }
 
-                if (isCorrect) score++;
+                const userHash = await sha256(userNormStr);
+                const targetHash = q.hash || q.secret;
+                
+                if (userHash === targetHash) {
+                    isCorrect = true;
+                    score++;
+                }
 
                 const item = document.createElement('div');
                 item.className = `report-item ${isCorrect ? 'correct' : 'incorrect'}`;
@@ -772,13 +766,9 @@
                     <div class="ans-block user-ans ${isCorrect ? 'correct-val' : ''}">
                         <strong>Ответ студента:</strong><br>${userDisplayAns}
                     </div>
-                    ${!isCorrect ? `
-                    <div class="ans-block correct-ans">
-                        <strong>Правильный ответ:</strong><br>${q.hintDisplay}
-                    </div>` : ''}
                 `;
                 reportSection.appendChild(item);
-            });
+            }
 
             document.getElementById('resName').textContent = `${studentInfo.lastName} ${studentInfo.firstName}`;
             document.getElementById('resGroup').textContent = studentInfo.group;
