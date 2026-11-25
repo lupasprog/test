@@ -1,431 +1,1638 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Тест по C++</title>
-<style>
-* { box-sizing: border-box; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест по C++: Вычисление значений переменных</title>
+    <!-- Подключение Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Подключение html2pdf.js для автоматического экспорта результатов в PDF формата A4 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- Подключение шрифтов Inter и JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Классы подсветки синтаксиса C++ без цифр в именах */
+        .tok-fn {
+            color: #fbbf24;
+            font-weight: 600;
+        }
+        .tok-var {
+            color: #7dd3fc;
+            font-weight: 500;
+        }
+        .tok-num {
+            color: #6ee7b7;
+            font-weight: 600;
+        }
+        .tok-op {
+            color: #f472b6;
+        }
+        .tok-semi {
+            color: #94a3b8;
+        }
 
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #edf2f8;
-    color: #26344a;
-}
+        /* Плавная анимация появления карточки вопроса */
+        @keyframes fadeSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .question-step-enter {
+            animation: fadeSlideIn 0.2s ease-out forwards;
+        }
 
-.container {
-    max-width: 650px;
-    margin: 40px auto;
-    padding: 25px;
-}
+        /* Контейнер для рендеринга PDF формата A4 (210мм x 297мм) */
+        #pdf-report-wrapper {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 680px;
+            background: #ffffff;
+            color: #0f172a;
+            font-family: 'Inter', Arial, sans-serif;
+            opacity: 0;
+            pointer-events: none;
+            z-index: -10;
+        }
 
-.header {
-    text-align: center;
-    margin-bottom: 25px;
-}
+        #pdf-report-wrapper.is-rendering-pdf {
+            opacity: 1;
+            z-index: 9999;
+        }
 
-.header h1 {
-    color: #24558a;
-    font-size: 27px;
-}
+        .pdf-page-a4 {
+            width: 680px;
+            background: #ffffff;
+            color: #0f172a;
+            font-size: 11px;
+            line-height: 1.22;
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+        }
 
-.card {
-    background: white;
-    border-radius: 18px;
-    padding: 30px;
-    box-shadow: 0 5px 20px #00000012;
-}
+        .pdf-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            margin-top: 4px;
+        }
 
-.progress {
-    height: 9px;
-    background: #e1e8f0;
-    border-radius: 10px;
-    margin: 15px 0 25px;
-    overflow: hidden;
-}
+        .pdf-table th,
+        .pdf-table td {
+            border: 1px solid #cbd5e1;
+            padding: 3px 5px;
+            vertical-align: middle;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
 
-.bar {
-    height: 100%;
-    width: 10%;
-    background: #3984c6;
-    transition: .3s;
-}
+        #pdf-report-wrapper.is-rendering-pdf {
+            opacity: 1;
+            z-index: 9999;
+        }
 
-.question-number {
-    color: #3984c6;
-    font-weight: bold;
-    font-size: 14px;
-}
+        .pdf-page-a4 {
+            width: 720px;
+            background: #ffffff;
+            color: #0f172a;
+            font-size: 11px;
+            line-height: 1.22;
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+        }
 
-.question {
-    background: #f0f5fb;
-    padding: 20px;
-    border-radius: 12px;
-    margin: 20px 0;
-}
+        .pdf-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 4px;
+        }
 
-pre {
-    font-family: Consolas, monospace;
-    font-size: 17px;
-    line-height: 1.7;
-    white-space: pre-wrap;
-    color: #173d65;
-}
+        .pdf-table th,
+        .pdf-table td {
+            border: 1px solid #cbd5e1;
+            padding: 3px 6px;
+            vertical-align: middle;
+        }
 
-.inputs {
-    display: flex;
-    gap: 15px;
-    flex-wrap: wrap;
-    margin: 20px 0;
-}
+        .pdf-table th {
+            background-color: #f1f5f9;
+            font-weight: 700;
+            font-size: 10px;
+            color: #1e293b;
+            text-align: left;
+        }
 
-.field {
-    flex: 1;
-    min-width: 120px;
-}
-
-label {
-    display: block;
-    margin-bottom: 7px;
-    font-weight: bold;
-}
-
-input {
-    width: 100%;
-    padding: 13px;
-    border: 2px solid #d5e0eb;
-    border-radius: 9px;
-    font-size: 18px;
-    outline: none;
-}
-
-input:focus {
-    border-color: #3984c6;
-}
-
-button {
-    border: none;
-    padding: 13px 23px;
-    border-radius: 9px;
-    font-size: 15px;
-    font-weight: bold;
-    cursor: pointer;
-    margin: 5px 5px 5px 0;
-}
-
-.check {
-    background: #245f99;
-    color: white;
-}
-
-.next {
-    background: #23865b;
-    color: white;
-}
-
-.result {
-    margin-top: 18px;
-    padding: 15px;
-    border-radius: 10px;
-    display: none;
-    line-height: 1.6;
-}
-
-.correct {
-    display: block;
-    background: #e3f5e9;
-    color: #176b39;
-}
-
-.wrong {
-    display: block;
-    background: #fff0e8;
-    color: #a34324;
-}
-
-#finish {
-    display: none;
-    text-align: center;
-}
-
-.score {
-    font-size: 30px;
-    color: #245f99;
-    font-weight: bold;
-}
-
-.small {
-    color: #718096;
-    font-size: 13px;
-}
-</style>
+        /* Настройки корректной печати A4 через window.print() */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 8mm;
+            }
+            body {
+                background: #ffffff !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            header, main, footer, #toast-message, #confirm-modal, #finish-confirm-modal {
+                display: none !important;
+            }
+            #pdf-report-wrapper {
+                position: static !important;
+                width: 100% !important;
+                opacity: 1 !important;
+                display: block !important;
+                z-index: auto !important;
+            }
+            .pdf-page-a4 {
+                width: 100% !important;
+            }
+        }
+    </style>
 </head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
 
-<body>
-<div class="container">
+    <!-- Верхняя шапка приложения -->
+    <header class="bg-gradient-to-r from-indigo-700 via-blue-700 to-indigo-800 text-white shadow-md">
+        <div class="max-w-4xl mx-auto px-4 py-5 sm:px-6 lg:px-8">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-indigo-100 text-xs font-semibold tracking-wider uppercase mb-2">
+                        <span>Информатика • C++</span>
+                        <span>•</span>
+                        <span id="variant-badge">Вариант #101</span>
+                    </div>
+                    <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight">
+                        Тест по C++: Вычисление значений переменных
+                    </h1>
+                    <p class="text-indigo-100 text-xs sm:text-sm mt-1">
+                        Определите конечные значения переменных после выполнения команд
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 self-start sm:self-center">
+                    <button type="button" id="btn-new-variant" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 active:bg-white/30 text-white text-sm font-semibold transition cursor-pointer border border-white/25 shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <span>Новый вариант</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
 
-<div class="header">
-    <h1>Тест по C++</h1>
-    <p>Вычисление значений переменных</p>
-</div>
+    <!-- Основной контейнер -->
+    <main class="flex-grow max-w-4xl w-full mx-auto px-4 py-6 sm:px-6 lg:px-8 space-y-5">
 
-<div class="card" id="test">
-
-    <div class="question-number" id="number"></div>
-
-    <div class="progress">
-        <div class="bar" id="bar"></div>
-    </div>
-
-    <div class="question">
-        <pre id="code"></pre>
-    </div>
-
-    <p>Введите конечные значения переменных:</p>
-
-    <div class="inputs">
-        <div class="field">
-            <label for="x">Значение x</label>
-            <input id="x" type="text" inputmode="decimal"
-                   placeholder="Введите x">
+        <!-- Всплывающее уведомление (замена alert) -->
+        <div id="toast-message" class="hidden fixed bottom-5 right-5 z-50 max-w-sm bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-xl border border-slate-700 flex items-center gap-3 pointer-events-none">
+            <span class="text-amber-400 shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+            </span>
+            <p id="toast-text" class="text-sm font-medium"></p>
         </div>
 
-        <div class="field" id="yField">
-            <label for="y">Значение y</label>
-            <input id="y" type="text" inputmode="decimal"
-                   placeholder="Введите y">
+        <!-- Карточка данных ученика -->
+        <section id="student-info-card" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5">
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-end">
+                <div class="sm:col-span-6">
+                    <label for="student-name" class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        Фамилия, имя <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="text" id="student-name" placeholder="Введите фамилию и имя"
+                           class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition text-sm text-slate-900 placeholder:text-slate-400">
+                </div>
+                <div class="sm:col-span-3">
+                    <label for="student-class" class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        Класс <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="text" id="student-class" placeholder="Например: 9А"
+                           class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition text-sm text-slate-900 placeholder:text-slate-400">
+                </div>
+                <div class="sm:col-span-3">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        Дата
+                    </label>
+                    <div id="current-date" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-600 text-sm font-medium">
+                        --.--.----
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ЭКРАН ТЕСТИРОВАНИЯ (по 1 вопросу на странице) -->
+        <section id="quiz-workspace" class="space-y-4">
+            <!-- Верхняя панель прогресса и навигации -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <div class="flex items-center gap-2">
+                        <span id="step-indicator" class="text-sm font-bold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-lg">
+                            Вопрос 1 из 10
+                        </span>
+                        <span class="text-xs text-slate-500 hidden sm:inline">
+                            • Каждый верный ответ: <strong>2 балла</strong>
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-3 text-xs font-medium text-slate-600">
+                        <span>Заполнено: <strong id="answered-counter" class="text-slate-900">0</strong> из 10</span>
+                        <button type="button" id="btn-finish-top" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition cursor-pointer">
+                            Завершить тест
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Кнопки быстрого перехода 1..10 -->
+                <div id="step-nav-buttons" class="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
+                    <!-- Заполняются через JS -->
+                </div>
+            </div>
+
+            <!-- Карточка текущего вопроса -->
+            <div id="single-question-host">
+                <!-- Отрисовывается активный вопрос -->
+            </div>
+
+            <!-- Нижняя панель кнопок навигации -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <button type="button" id="btn-prev"
+                        class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none text-slate-700 font-semibold text-sm transition cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <span>← Назад</span>
+                </button>
+
+                <div class="text-xs text-slate-400 text-center hidden md:block">
+                    Нажмите <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-600 font-mono">Enter</kbd> для перехода дальше
+                </div>
+
+                <div class="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-2">
+                    <button type="button" id="btn-next"
+                            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-sm transition cursor-pointer">
+                        <span id="btn-next-label">Далее →</span>
+                    </button>
+
+                    <button type="button" id="btn-finish-bottom"
+                            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-sm transition cursor-pointer">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Завершить тест</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Примечание про <cmath> -->
+            <div class="bg-amber-50/90 border border-amber-200 rounded-2xl p-3.5 flex items-center gap-3 text-xs sm:text-sm text-amber-900">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>
+                    <strong>Примечание:</strong> для использования математических функций <code class="font-mono bg-amber-100 px-1.5 py-0.5 rounded text-amber-950">sqrt()</code> и <code class="font-mono bg-amber-100 px-1.5 py-0.5 rounded text-amber-950">pow()</code> в C++ подключается библиотека <code class="font-mono bg-amber-100 px-1.5 py-0.5 rounded text-amber-950">&lt;cmath&gt;</code>.
+                </span>
+            </div>
+        </section>
+
+        <!-- ИТОГОВЫЙ ЭКРАН РЕЗУЛЬТАТОВ -->
+        <section id="result-screen" class="hidden space-y-6">
+            <div class="bg-white rounded-2xl shadow-md border-2 border-indigo-500 overflow-hidden">
+                <div class="bg-indigo-600 text-white px-6 py-4 flex flex-wrap items-center justify-between gap-2">
+                    <h2 class="text-lg sm:text-xl font-bold flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Результаты тестирования
+                    </h2>
+                    <span id="res-variant" class="text-xs font-mono bg-indigo-800/70 px-3 py-1 rounded-full">Вариант #101</span>
+                </div>
+
+                <div class="p-6">
+                    <!-- Информация об ученике -->
+                    <div class="mb-6 pb-4 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4">
+                        <div>
+                            <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Ученик</p>
+                            <p id="res-student" class="text-lg font-bold text-slate-900">—</p>
+                        </div>
+                        <div class="text-left sm:text-right">
+                            <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Дата и время завершения</p>
+                            <p id="res-timestamp" class="text-sm font-medium text-slate-600">—</p>
+                        </div>
+                    </div>
+
+                    <!-- 4 карточки показателей -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                        <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-center">
+                            <p class="text-xs font-semibold text-slate-500 uppercase">Верных ответов</p>
+                            <p class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">
+                                <span id="res-correct">0</span><span class="text-base font-medium text-slate-400"> / 10</span>
+                            </p>
+                        </div>
+                        <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-center">
+                            <p class="text-xs font-semibold text-slate-500 uppercase">Набрано баллов</p>
+                            <p class="text-2xl sm:text-3xl font-extrabold text-indigo-600 mt-1">
+                                <span id="res-points">0</span><span class="text-base font-medium text-slate-400"> / 20</span>
+                            </p>
+                        </div>
+                        <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-center">
+                            <p class="text-xs font-semibold text-slate-500 uppercase">Процент</p>
+                            <p class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">
+                                <span id="res-percent">0</span>%
+                            </p>
+                        </div>
+                        <div id="res-grade-card" class="bg-emerald-50 rounded-2xl p-4 border-2 border-emerald-500 text-center">
+                            <p class="text-xs font-semibold uppercase tracking-wide" id="res-grade-label">Оценка</p>
+                            <p class="text-2xl sm:text-3xl font-black mt-1" id="res-grade">10</p>
+                        </div>
+                    </div>
+
+                    <!-- Шкала оценивания -->
+                    <div class="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-200">
+                        <h3 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            Шкала перевода процентов в оценку:
+                        </h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-7 gap-2 text-center text-sm" id="grading-scale-grid">
+                            <!-- Заполняется через JS -->
+                        </div>
+                        <p id="res-grade-comment" class="text-xs text-slate-600 mt-3 font-medium"></p>
+                    </div>
+
+                    <!-- Кнопка нового варианта и повторного скачивания PDF -->
+                    <div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-100">
+                        <div class="flex items-center gap-2 text-xs text-slate-600">
+                            <span id="pdf-status-badge" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <span id="pdf-status-text">PDF-отчёт (A4) сформирован</span>
+                            </span>
+                        </div>
+                        <div class="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-2.5">
+                            <button type="button" id="btn-download-pdf" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow-sm transition cursor-pointer">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                <span>Скачать PDF (A4) ещё раз</span>
+                            </button>
+                            <button type="button" id="btn-restart" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-sm transition cursor-pointer">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                <span>Пройти заново (новый вариант)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Подробный разбор всех 10 заданий -->
+            <div class="space-y-3">
+                <h3 class="text-base sm:text-lg font-bold text-slate-800 px-1">
+                    Подробный разбор заданий
+                </h3>
+                <div id="review-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Карточки разбора генерируются в JS -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Подвал -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-auto">
+        <div class="max-w-4xl mx-auto px-4 text-center text-xs text-slate-400">
+            Интерактивный тест по программированию на языке C++ • Максимум: 20 баллов (10 заданий по 2 балла)
+        </div>
+    </footer>
+
+    <!-- Скрытый контейнер для генерации и печати полного отчёта в формате A4 -->
+    <div id="pdf-report-wrapper" aria-hidden="true"></div>
+
+    <!-- Модальное окно подтверждения смены варианта -->
+    <div id="confirm-modal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
+            <h3 class="text-lg font-bold text-slate-900">Сгенерировать новый вариант?</h3>
+            <p class="text-sm text-slate-600 mt-2">Введённые ответы будут очищены, а для всех 10 заданий сформируются новые случайные числа.</p>
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" id="btn-cancel-variant" class="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium text-sm cursor-pointer">
+                    Отмена
+                </button>
+                <button type="button" id="btn-confirm-variant" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm cursor-pointer">
+                    Да, обновить
+                </button>
+            </div>
         </div>
     </div>
 
-    <button class="check" id="check" onclick="checkAnswer()">
-        Проверить
-    </button>
-
-    <div class="result" id="feedback"></div>
-
-    <div style="margin-top:20px">
-        <button class="next" id="next" onclick="nextQuestion()"
-                style="display:none">
-            Следующий вопрос →
-        </button>
+    <!-- Модальное окно подтверждения досрочного завершения с невыполненными заданиями -->
+    <div id="finish-confirm-modal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
+            <div class="flex items-center gap-3 text-amber-600 mb-2">
+                <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900">Есть невыполненные задания</h3>
+            </div>
+            <p id="finish-confirm-text" class="text-sm text-slate-600 mt-2 leading-relaxed">
+                Осталось невыполненных заданий: 0 из 10. Незаполненные задания будут засчитаны как 0 баллов. Вы уверены, что хотите завершить тест?
+            </p>
+            <div class="mt-6 flex flex-col-reverse sm:flex-row justify-end gap-2.5">
+                <button type="button" id="btn-cancel-finish" class="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium text-sm cursor-pointer">
+                    Вернуться к тесту
+                </button>
+                <button type="button" id="btn-confirm-finish" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm cursor-pointer">
+                    Да, завершить
+                </button>
+            </div>
+        </div>
     </div>
 
-    <p class="small" id="hint">
-        Введите ответы и нажмите «Проверить».
-    </p>
+    <script>
+        /**
+         * Глобальное состояние приложения
+         */
+        let currentVariantId = 101;
+        let questionsData = [];
+        let answers = []; // Массив объектов ответов по индексу вопроса: [{ x: '', y: '' }, ...]
+        let currentIndex = 0; // Индекс текущего вопроса (0..9)
+        let isTestSubmitted = false;
+        let toastTimeout = null;
+        let lastReportData = null; // Данные последнего завершённого теста для повторной генерации PDF
 
-</div>
+        /**
+         * Шкала оценивания согласно таблице
+         */
+        const GRADING_SCALE = [
+            { grade: '10',      min: 96, max: 100, label: '96–100%' },
+            { grade: '9',       min: 90, max: 95,  label: '90–95%' },
+            { grade: '8',       min: 74, max: 89,  label: '74–89%' },
+            { grade: '7',       min: 58, max: 73,  label: '58–73%' },
+            { grade: '6',       min: 42, max: 57,  label: '42–57%' },
+            { grade: '5',       min: 25, max: 41,  label: '25–41%' },
+            { grade: 'Незачёт', min: 0,  max: 24,  label: '< 25%' }
+        ];
 
-<div class="card" id="finish">
-    <h2>Тест завершён!</h2>
-    <p>Ваш результат:</p>
-    <div class="score" id="score"></div>
-    <p id="grade"></p>
-    <button class="check" onclick="restart()">
-        Пройти ещё раз
-    </button>
-</div>
+        /**
+         * Транслитерация кириллицы в латиницу для безопасного имени PDF-файла
+         */
+        function transliterateForFilename(str) {
+            const map = {
+                'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
+                'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+                'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+                'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'shch',
+                'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+            };
+            return String(str || 'Student')
+                .trim()
+                .toLowerCase()
+                .split('')
+                .map(ch => map[ch] !== undefined ? map[ch] : ch)
+                .join('')
+                .replace(/[^a-z0-9]+/g, '_')
+                .replace(/^_+|_+$/g, '') || 'Student';
+        }
 
-</div>
+        /**
+         * Экранирование HTML-спецсимволов для безопасной вставки в PDF-шаблон
+         */
+        function escapeHtml(str) {
+            return String(str ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
 
-<script>
-const tasks = [
-{
-code: `x = 3;
-y = 2;
-x = x + y;`,
-x: 5, y: 2
-},
-{
-code: `x = 10;
-y = 4;
-x = x - y;
-y = x + 2;`,
-x: 6, y: 8
-},
-{
-code: `x = 5;
-y = 3;
-x = x * y;
-y = x / 5;`,
-x: 15, y: 3
-},
-{
-code: `x = 16;
-x = sqrt(x);
-x = x + 4;`,
-x: 8
-},
-{
-code: `x = 3;
-y = 2;
-x = x * x + y;`,
-x: 11, y: 2
-},
-{
-code: `x = 20;
-y = 5;
-x = x / y;
-y = y + x;`,
-x: 4, y: 9
-},
-{
-code: `x = 2;
-y = 3;
-x = pow(x, y);`,
-x: 8, y: 3
-},
-{
-code: `x = 25;
-y = 5;
-x = sqrt(x) + y;`,
-x: 10, y: 5
-},
-{
-code: `x = 4;
-y = 2;
-x = x * y;
-y = sqrt(x);`,
-x: 8, y: Math.sqrt(8)
-},
-{
-code: `x = 7;
-y = 3;
-x = x + y * 2;
-y = x - y;`,
-x: 13, y: 10
-}
-];
+        /**
+         * Показ всплывающего уведомления
+         */
+        function showToast(message) {
+            const toastEl = document.getElementById('toast-message');
+            const toastTextEl = document.getElementById('toast-text');
+            if (!toastEl || !toastTextEl) return;
 
-let current = 0;
-let points = 0;
-let answered = false;
+            toastTextEl.textContent = message;
+            toastEl.classList.remove('hidden');
 
-function showQuestion() {
-    const t = tasks[current];
+            if (toastTimeout) {
+                clearTimeout(toastTimeout);
+            }
+            toastTimeout = setTimeout(() => {
+                toastEl.classList.add('hidden');
+            }, 3200);
+        }
 
-    document.getElementById("number").textContent =
-        `ВОПРОС ${current + 1} ИЗ ${tasks.length}`;
+        /**
+         * Генерация случайного целого числа [min, max], строго исключая подстроку "300"
+         */
+        function randInt(min, max) {
+            let val;
+            do {
+                val = Math.floor(Math.random() * (max - min + 1)) + min;
+            } while (String(val).includes('300'));
+            return val;
+        }
 
-    document.getElementById("bar").style.width =
-        ((current + 1) / tasks.length * 100) + "%";
+        /**
+         * Генерация номера варианта (трёхзначное число, строго не содержащее подстроку "300")
+         */
+        function generateVariantNumber() {
+            let num;
+            do {
+                num = Math.floor(Math.random() * 899) + 101;
+            } while (String(num).includes('300'));
+            return num;
+        }
 
-    document.getElementById("code").textContent = t.code;
+        /**
+         * Случайный выбор элемента из массива
+         */
+        function randChoice(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
 
-    document.getElementById("x").value = "";
-    document.getElementById("y").value = "";
+        /**
+         * Однопроходный токенизатор кода C++.
+         * Разбирает исходный текст за один проход, исключая повторную замену внутри HTML-тегов.
+         * Имена CSS-классов (.tok-fn, .tok-var, .tok-num, .tok-op, .tok-semi) не содержат цифр.
+         */
+        function highlightCppCode(codeText) {
+            const escaped = codeText
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
 
-    document.getElementById("yField").style.display =
-        t.y === undefined ? "none" : "block";
+            const tokenRegex = /\b(sqrt|pow)\b|\b([xy])\b|\b(\d+)\b|([=+\-*/])|(;)/g;
 
-    document.getElementById("feedback").className = "result";
-    document.getElementById("feedback").textContent = "";
+            return escaped.replace(tokenRegex, (match, fnName, varName, numLit, opChar, semiChar) => {
+                if (fnName) return `<span class="tok-fn">${fnName}</span>`;
+                if (varName) return `<span class="tok-var">${varName}</span>`;
+                if (numLit) return `<span class="tok-num">${numLit}</span>`;
+                if (opChar) return `<span class="tok-op">${opChar}</span>`;
+                if (semiChar) return `<span class="tok-semi">${semiChar}</span>`;
+                return match;
+            });
+        }
 
-    document.getElementById("check").style.display = "inline-block";
-    document.getElementById("next").style.display = "none";
+        /**
+         * Парсинг числового ввода ученика (поддержка целых, отрицательных и дробных чисел с точкой или запятой)
+         */
+        function parseNumericInput(rawStr) {
+            if (rawStr === null || rawStr === undefined) return NaN;
+            const normalized = String(rawStr).trim().replace(',', '.');
+            if (normalized === '' || normalized === '-' || normalized === '+' || normalized === '.') {
+                return NaN;
+            }
+            if (!/^[+-]?(\d+(\.\d*)?|\.\d+)$/.test(normalized)) {
+                return NaN;
+            }
+            return Number(normalized);
+        }
 
-    document.getElementById("hint").textContent =
-        "Введите ответы и нажмите «Проверить».";
+        /**
+         * Генерация 10 индивидуальных заданий
+         */
+        function generateQuestions() {
+            const tasks = [];
 
-    answered = false;
-}
+            // Задание 1: x = a; y = b; x = x + y;
+            {
+                const a = randInt(2, 18);
+                const b = randInt(2, 18);
+                tasks.push({
+                    id: 1,
+                    lines: [
+                        `x = ${a};`,
+                        `y = ${b};`,
+                        `x = x + y;`
+                    ],
+                    vars: ['x', 'y'],
+                    answers: { x: a + b, y: b },
+                    tolerance: 0
+                });
+            }
 
-function parseNumber(value) {
-    return Number(value.trim().replace(",", "."));
-}
+            // Задание 2: x = a; y = b; x = x - y; y = x + c;
+            {
+                const b = randInt(2, 12);
+                const a = b + randInt(2, 14);
+                const c = randInt(2, 10);
+                const x1 = a - b;
+                const y1 = x1 + c;
+                tasks.push({
+                    id: 2,
+                    lines: [
+                        `x = ${a};`,
+                        `y = ${b};`,
+                        `x = x - y;`,
+                        `y = x + ${c};`
+                    ],
+                    vars: ['x', 'y'],
+                    answers: { x: x1, y: y1 },
+                    tolerance: 0
+                });
+            }
 
-function isCorrect(value, expected) {
-    if (value.trim() === "") return false;
-    const n = parseNumber(value);
-    return Number.isFinite(n) &&
-        Math.abs(n - expected) <= 0.01;
-}
+            // Задание 3: x = a; y = b; x = x * y; y = x / d; (x * y делится на d нацело)
+            {
+                const d = randChoice([2, 3, 4, 5, 6]);
+                const a = d * randInt(1, 3);
+                const b = randInt(2, 7);
+                const x1 = a * b;
+                const y1 = x1 / d;
+                tasks.push({
+                    id: 3,
+                    lines: [
+                        `x = ${a};`,
+                        `y = ${b};`,
+                        `x = x * y;`,
+                        `y = x / ${d};`
+                    ],
+                    vars: ['x', 'y'],
+                    answers: { x: x1, y: y1 },
+                    tolerance: 0
+                });
+            }
 
-function checkAnswer() {
-    if (answered) return;
+            // Задание 4: x = s; x = sqrt(x); x = x + c; (ответ: только x)
+            {
+                const squares = [4, 9, 16, 25, 36, 49, 64, 81, 100];
+                const s = randChoice(squares);
+                const c = randInt(2, 15);
+                const x1 = Math.sqrt(s) + c;
+                tasks.push({
+                    id: 4,
+                    lines: [
+                        `x = ${s};`,
+                        `x = sqrt(x);`,
+                        `x = x + ${c};`
+                    ],
+                    vars: ['x'],
+                    answers: { x: x1 },
+                    tolerance: 0
+                });
+            }
 
-    const t = tasks[current];
-    const xv = document.getElementById("x").value;
-    const yv = document.getElementById("y").value;
+            // Задание 5: x = a; y = b; x = x * x + y;
+            {
+                const a = randInt(2, 8);
+                const b = randInt(1, 15);
+                const x1 = a * a + b;
+                tasks.push({
+                    id: 5,
+                    lines: [
+                        `x = ${a};`,
+                        `y = ${b};`,
+                        `x = x * x + y;`
+                    ],
+                    vars: ['x', 'y'],
+                    answers: { x: x1, y: b },
+                    tolerance: 0
+                });
+            }
 
-    if (xv.trim() === "" ||
-        (t.y !== undefined && yv.trim() === "")) {
-        alert("Введите все необходимые значения!");
-        return;
-    }
+            // Задание 6: x = a; y = b; x = x / y; y = y + x; (a делится на b нацело)
+            {
+                const b = randInt(2, 9);
+                const ratio = randInt(2, 8);
+                const a = b * ratio;
+                const x1 = ratio;
+                const y1 = b + x1;
+                tasks.push({
+                    id: 6,
+                    lines: [
+                        `x = ${a};`,
+                        `y = ${b};`,
+                        `x = x / y;`,
+                        `y = y + x;`
+                    ],
+                    vars: ['x', 'y'],
+                    answers: { x: x1, y: y1 },
+                    tolerance: 0
+                });
+            }
 
-    const xOK = isCorrect(xv, t.x);
-    const yOK = t.y === undefined || isCorrect(yv, t.y);
+            // Задание 7: x = a; y = b; x = pow(x, y);
+            {
+                const powPairs = [
+                    [2, 3], [2, 4], [2, 5],
+                    [3, 2], [3, 3],
+                    [4, 2], [4, 3],
+                    [5, 2], [5, 3],
+                    [6, 2]
+                ];
+                const [a, b] = randChoice(powPairs);
+                const x1 = Math.pow(a, b);
+                tasks.push({
+                    id: 7,
+                    lines: [
+                        `x = ${a};`,
+                        `y = ${b};`,
+                        `x = pow(x, y);`
+                    ],
+                    vars: ['x', 'y'],
+                    answers: { x: x1, y: b },
+                    tolerance: 0
+                });
+            }
 
-    const feedback = document.getElementById("feedback");
+            // Задание 8: x = s; y = b; x = sqrt(x) + y; (s — полный квадрат)
+            {
+                const squares = [4, 9, 16, 25, 36, 49, 64, 81, 100];
+                const s = randChoice(squares);
+                const b = randInt(2, 15);
+                const x1 = Math.sqrt(s) + b;
+                tasks.push({
+                    id: 8,
+                    lines: [
+                        `x = ${s};`,
+                        `y = ${b};`,
+                        `x = sqrt(x) + y;`
+                    ],
+                    vars: ['x', 'y'],
+                    answers: { x: x1, y: b },
+                    tolerance: 0
+                });
+            }
 
-    if (xOK && yOK) {
-        points++;
-        feedback.className = "result correct";
-        feedback.innerHTML = "✓ Правильно! Все значения вычислены верно.";
-    } else {
-        feedback.className = "result wrong";
-        feedback.innerHTML =
-            "✗ Есть ошибка.<br>Правильный ответ: " +
-            "x = " + format(t.x) +
-            (t.y === undefined ? "" : "; y = " + format(t.y));
-    }
+            // Задание 9: x = a; y = b; x = x * y; y = sqrt(x);
+            // Подбираем так, чтобы корень извлекался нацело (удобно для устного счёта),
+            // но при этом допускаем ввод с точностью до 0.05 на случай дробного ввода
+            {
+                const validPairs = [
+                    [4, 9], [9, 4],
+                    [2, 8], [8, 2],
+                    [3, 12], [12, 3],
+                    [4, 4], [9, 9],
+                    [2, 18], [18, 2],
+                    [4, 16], [16, 4],
+                    [5, 20], [20, 5]
+                ];
+                const [a, b] = randChoice(validPairs);
+                const x1 = a * b;
+                const y1 = Math.round(Math.sqrt(x1) * 100) / 100;
+                tasks.push({
+                    id: 9,
+                    lines: [
+                        `x = ${a};`,
+                        `y = ${b};`,
+                        `x = x * y;`,
+                        `y = sqrt(x);`
+                    ],
+                    vars: ['x', 'y'],
+                    answers: { x: x1, y: y1 },
+                    tolerance: 0.05,
+                    hint: 'При необходимости округляйте дробный ответ до сотых (можно через точку или запятую).'
+                });
+            }
 
-    answered = true;
+            // Задание 10: x = a; y = b; x = x + y * c; y = x - y;
+            {
+                const a = randInt(3, 14);
+                const b = randInt(2, 7);
+                const c = randChoice([2, 3, 4]);
+                const x1 = a + b * c;
+                const y1 = x1 - b;
+                tasks.push({
+                    id: 10,
+                    lines: [
+                        `x = ${a};`,
+                        `y = ${b};`,
+                        `x = x + y * ${c};`,
+                        `y = x - y;`
+                    ],
+                    vars: ['x', 'y'],
+                    answers: { x: x1, y: y1 },
+                    tolerance: 0
+                });
+            }
 
-    document.getElementById("check").style.display = "none";
-    document.getElementById("next").style.display = "inline-block";
+            return tasks;
+        }
 
-    document.getElementById("next").textContent =
-        current === tasks.length - 1 ?
-        "Завершить тест" : "Следующий вопрос →";
-}
+        /**
+         * Инициализация массива ответов ученика пустыми строками
+         */
+        function initAnswers() {
+            answers = questionsData.map(task => {
+                const entry = {};
+                task.vars.forEach(v => {
+                    entry[v] = '';
+                });
+                return entry;
+            });
+        }
 
-function format(n) {
-    return Number.isInteger(n) ? n : n.toFixed(2);
-}
+        /**
+         * Принудительное сохранение текущих значений из полей ввода активного вопроса в answers[currentIndex]
+         */
+        function saveCurrentInputs() {
+            if (!questionsData[currentIndex]) return;
+            const task = questionsData[currentIndex];
+            if (!answers[currentIndex]) {
+                answers[currentIndex] = {};
+            }
+            task.vars.forEach(v => {
+                const inputEl = document.getElementById(`active-input-${v}`);
+                if (inputEl) {
+                    answers[currentIndex][v] = inputEl.value;
+                }
+            });
+        }
 
-function nextQuestion() {
-    if (!answered) return;
+        /**
+         * Проверка, заполнены ли все поля вопроса по его индексу
+         */
+        function isQuestionAnswered(idx) {
+            const task = questionsData[idx];
+            const ans = answers[idx];
+            if (!task || !ans) return false;
+            return task.vars.every(v => {
+                const val = ans[v];
+                return val !== undefined && String(val).trim() !== '';
+            });
+        }
 
-    current++;
+        /**
+         * Переход к конкретному вопросу по индексу (0..9)
+         */
+        function goToQuestion(targetIndex) {
+            if (isTestSubmitted) return;
+            if (targetIndex < 0 || targetIndex >= questionsData.length) return;
 
-    if (current < tasks.length) {
-        showQuestion();
-    } else {
-        finishTest();
-    }
-}
+            saveCurrentInputs();
+            currentIndex = targetIndex;
+            renderCurrentQuestion();
+        }
 
-function finishTest() {
-    document.getElementById("test").style.display = "none";
-    document.getElementById("finish").style.display = "block";
+        /**
+         * Переход к следующему вопросу или завершение теста на 10-м вопросе
+         */
+        function handleNextStep() {
+            if (isTestSubmitted) return;
+            saveCurrentInputs();
 
-    document.getElementById("score").textContent =
-        points + " / " + tasks.length;
+            if (currentIndex < questionsData.length - 1) {
+                currentIndex += 1;
+                renderCurrentQuestion();
+            } else {
+                requestFinishTest();
+            }
+        }
 
-    let grade = "";
+        /**
+         * Возврат к предыдущему вопросу
+         */
+        function handlePrevStep() {
+            if (isTestSubmitted) return;
+            saveCurrentInputs();
 
-    if (points >= 9) grade = "Отличный результат!";
-    else if (points >= 7) grade = "Хороший результат!";
-    else if (points >= 5) grade = "Удовлетворительный результат.";
-    else grade = "Нужно повторить тему.";
+            if (currentIndex > 0) {
+                currentIndex -= 1;
+                renderCurrentQuestion();
+            }
+        }
 
-    document.getElementById("grade").textContent = grade;
-}
+        /**
+         * Обновление панели прогресса и состояния кнопок навигации
+         */
+        function updateNavigationUI() {
+            const navContainer = document.getElementById('step-nav-buttons');
+            navContainer.innerHTML = '';
 
-function restart() {
-    current = 0;
-    points = 0;
-    document.getElementById("finish").style.display = "none";
-    document.getElementById("test").style.display = "block";
-    showQuestion();
-}
+            let answeredTotal = 0;
 
-showQuestion();
-</script>
+            questionsData.forEach((task, idx) => {
+                const answered = isQuestionAnswered(idx);
+                if (answered) answeredTotal++;
 
+                const isCurrent = idx === currentIndex;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = String(task.id);
+                btn.setAttribute('aria-label', `Перейти к вопросу ${task.id}`);
+                btn.addEventListener('click', () => goToQuestion(idx));
+
+                let btnClasses = 'h-9 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center border ';
+                if (isCurrent) {
+                    btnClasses += 'bg-indigo-600 text-white border-indigo-600 shadow-sm ring-2 ring-indigo-200';
+                } else if (answered) {
+                    btnClasses += 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100';
+                } else {
+                    btnClasses += 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100';
+                }
+
+                btn.className = btnClasses;
+                navContainer.appendChild(btn);
+            });
+
+            document.getElementById('step-indicator').textContent = `Вопрос ${currentIndex + 1} из ${questionsData.length}`;
+            document.getElementById('answered-counter').textContent = String(answeredTotal);
+
+            // Состояние кнопки «← Назад»
+            const prevBtn = document.getElementById('btn-prev');
+            prevBtn.disabled = currentIndex === 0;
+
+            // Состояние кнопки «Далее →» (на 10-м вопросе превращается в «Завершить тест»)
+            const nextBtn = document.getElementById('btn-next');
+            const nextLabel = document.getElementById('btn-next-label');
+            const finishBottomBtn = document.getElementById('btn-finish-bottom');
+
+            if (currentIndex === questionsData.length - 1) {
+                nextLabel.textContent = 'Завершить тест';
+                nextBtn.className = 'w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-sm transition cursor-pointer';
+                finishBottomBtn.classList.add('hidden');
+            } else {
+                nextLabel.textContent = 'Далее →';
+                nextBtn.className = 'w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-sm transition cursor-pointer';
+                finishBottomBtn.classList.remove('hidden');
+            }
+        }
+
+        /**
+         * Отрисовка карточки текущего вопроса
+         */
+        function renderCurrentQuestion() {
+            const host = document.getElementById('single-question-host');
+            const task = questionsData[currentIndex];
+            const currentAns = answers[currentIndex] || {};
+
+            const highlightedCode = task.lines
+                .map(line => highlightCppCode(line))
+                .join('\n');
+
+            const inputsHtml = task.vars.map(v => {
+                const savedVal = currentAns[v] ?? '';
+                return `
+                    <div class="flex-1 min-w-[140px]">
+                        <label for="active-input-${v}" class="block text-sm font-bold text-slate-700 mb-1.5">
+                            Конечное значение <code class="font-mono text-base text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded">${v}</code>:
+                        </label>
+                        <div class="relative flex items-center">
+                            <span class="absolute left-4 font-mono text-base font-bold text-slate-400 select-none pointer-events-none">${v} =</span>
+                            <input type="text" inputmode="decimal" autocomplete="off" id="active-input-${v}" data-var="${v}" value="${String(savedVal).replace(/"/g, '&quot;')}" placeholder="?"
+                                   class="w-full pl-14 pr-4 py-3.5 rounded-xl border-2 border-slate-300 bg-slate-50 font-mono text-lg font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600 transition">
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const hintHtml = task.hint
+                ? `<p class="text-xs text-slate-500 mt-2.5">${task.hint}</p>`
+                : '';
+
+            host.innerHTML = `
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-7 question-step-enter">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-sm font-extrabold shadow-xs">
+                                ${task.id}
+                            </span>
+                            <div>
+                                <h2 class="text-base sm:text-lg font-bold text-slate-900">Задание №${task.id}</h2>
+                                <p class="text-xs text-slate-500">Определите значения переменных после выполнения фрагмента кода</p>
+                            </div>
+                        </div>
+                        <span class="text-xs font-semibold px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                            2 балла
+                        </span>
+                    </div>
+
+                    <!-- Фрагмент кода C++ -->
+                    <div class="rounded-xl overflow-hidden border border-slate-800 shadow-inner bg-slate-900">
+                        <div class="bg-slate-800/80 px-4 py-2 flex items-center justify-between border-b border-slate-700/80">
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-2.5 h-2.5 rounded-full bg-rose-400/80"></span>
+                                <span class="w-2.5 h-2.5 rounded-full bg-amber-400/80"></span>
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400/80"></span>
+                                <span class="ml-2 text-xs font-mono text-slate-400">main.cpp</span>
+                            </div>
+                            <span class="text-[11px] font-mono text-slate-400">C++</span>
+                        </div>
+                        <div class="p-4 sm:p-5 font-mono text-base sm:text-lg leading-relaxed text-slate-100 overflow-x-auto">
+                            <pre class="m-0"><code>${highlightedCode}</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- Окошки для ввода ответа -->
+                    <div class="mt-6 pt-5 border-t border-slate-100">
+                        <p class="text-xs uppercase tracking-wider font-bold text-slate-400 mb-3">
+                            Введите ответ:
+                        </p>
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            ${inputsHtml}
+                        </div>
+                        ${hintHtml}
+                    </div>
+                </div>
+            `;
+
+            // Навешиваем прямые обработчики input и keydown на свежесозданные поля
+            task.vars.forEach(v => {
+                const inputEl = document.getElementById(`active-input-${v}`);
+                if (!inputEl) return;
+
+                inputEl.addEventListener('input', () => {
+                    answers[currentIndex][v] = inputEl.value;
+                    updateNavigationUI();
+                });
+
+                inputEl.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        saveCurrentInputs();
+                        if (v === 'x' && task.vars.includes('y')) {
+                            const yInput = document.getElementById('active-input-y');
+                            if (yInput) {
+                                yInput.focus();
+                                return;
+                            }
+                        }
+                        handleNextStep();
+                    }
+                });
+            });
+
+            updateNavigationUI();
+
+            // Устанавливаем фокус в первое поле ответа
+            const firstVar = task.vars[0];
+            const firstInput = document.getElementById(`active-input-${firstVar}`);
+            if (firstInput) {
+                firstInput.focus();
+            }
+        }
+
+        /**
+         * Запрос на завершение теста (проверка ФИО, класса и наличия пропущенных заданий)
+         */
+        function requestFinishTest() {
+            if (isTestSubmitted) return;
+            saveCurrentInputs();
+
+            const nameInput = document.getElementById('student-name');
+            const classInput = document.getElementById('student-class');
+            const studentName = nameInput.value.trim();
+            const studentClass = classInput.value.trim();
+
+            if (!studentName) {
+                nameInput.focus();
+                nameInput.classList.add('border-rose-500', 'ring-2', 'ring-rose-200');
+                showToast('Пожалуйста, укажите Фамилию и Имя ученика.');
+                return;
+            } else {
+                nameInput.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200');
+            }
+
+            if (!studentClass) {
+                classInput.focus();
+                classInput.classList.add('border-rose-500', 'ring-2', 'ring-rose-200');
+                showToast('Пожалуйста, укажите класс ученика.');
+                return;
+            } else {
+                classInput.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200');
+            }
+
+            let unansweredCount = 0;
+            for (let i = 0; i < questionsData.length; i++) {
+                if (!isQuestionAnswered(i)) {
+                    unansweredCount++;
+                }
+            }
+
+            if (unansweredCount > 0) {
+                document.getElementById('finish-confirm-text').textContent =
+                    `Осталось невыполненных заданий: ${unansweredCount} из ${questionsData.length}. Незаполненные задания будут засчитаны как 0 баллов. Вы уверены, что хотите завершить тест?`;
+                document.getElementById('finish-confirm-modal').classList.remove('hidden');
+                return;
+            }
+
+            finalizeTestSubmission();
+        }
+
+        function closeFinishConfirmModal() {
+            document.getElementById('finish-confirm-modal').classList.add('hidden');
+        }
+
+        /**
+         * Окончательный подсчет баллов и отображение итогового экрана
+         */
+        function finalizeTestSubmission() {
+            if (isTestSubmitted) return;
+            saveCurrentInputs();
+
+            const nameInput = document.getElementById('student-name');
+            const classInput = document.getElementById('student-class');
+            const studentName = nameInput.value.trim();
+            const studentClass = classInput.value.trim();
+
+            isTestSubmitted = true;
+            nameInput.disabled = true;
+            classInput.disabled = true;
+
+            let correctCount = 0;
+            const reviewHtmlParts = [];
+            const pdfTasksData = [];
+
+            questionsData.forEach((task, idx) => {
+                let taskCorrect = true;
+                let hasAnyUserInput = false;
+                const varComparisons = [];
+                const pdfVarRows = [];
+                const ansObj = answers[idx] || {};
+
+                task.vars.forEach(v => {
+                    const rawUser = String(ansObj[v] ?? '').trim();
+                    const hasValue = rawUser !== '';
+                    if (hasValue) hasAnyUserInput = true;
+
+                    const numUser = parseNumericInput(rawUser);
+                    const expected = task.answers[v];
+                    const tol = task.tolerance || 0;
+
+                    const isVarRight = hasValue && !Number.isNaN(numUser) && Math.abs(numUser - expected) <= tol;
+                    if (!isVarRight) {
+                        taskCorrect = false;
+                    }
+
+                    const userDisplay = hasValue
+                        ? `Ваш ответ: <strong>${escapeHtml(rawUser)}</strong>`
+                        : `<span class="italic opacity-80">Не дано ответа</span>`;
+
+                    varComparisons.push(`
+                        <div class="flex items-center justify-between text-xs sm:text-sm py-1.5 px-3 rounded-lg ${isVarRight ? 'bg-emerald-50 text-emerald-900' : 'bg-rose-50 text-rose-900'}">
+                            <span class="font-mono font-bold">${v}:</span>
+                            <div class="flex items-center gap-3 font-mono">
+                                <span>${userDisplay}</span>
+                                ${!isVarRight ? `<span class="text-emerald-700 font-bold">Верно: ${expected}</span>` : '<span>✓</span>'}
+                            </div>
+                        </div>
+                    `);
+
+                    pdfVarRows.push({
+                        varName: v,
+                        userVal: hasValue ? rawUser : '—',
+                        expectedVal: String(expected),
+                        isRight: isVarRight
+                    });
+                });
+
+                if (taskCorrect) {
+                    correctCount++;
+                }
+
+                let taskStatusText = 'Ошибка';
+                if (taskCorrect) {
+                    taskStatusText = 'Верно';
+                } else if (!hasAnyUserInput) {
+                    taskStatusText = 'Не выполнено';
+                }
+
+                pdfTasksData.push({
+                    id: task.id,
+                    codeLines: [...task.lines],
+                    vars: pdfVarRows,
+                    points: taskCorrect ? 2 : 0,
+                    isCorrect: taskCorrect,
+                    statusText: taskStatusText
+                });
+
+                const highlightedCode = task.lines.map(l => highlightCppCode(l)).join('\n');
+
+                reviewHtmlParts.push(`
+                    <div class="bg-white rounded-2xl border ${taskCorrect ? 'border-emerald-300' : 'border-rose-300'} p-4 shadow-xs flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-2.5">
+                                <span class="text-sm font-bold text-slate-800">Задание ${task.id}</span>
+                                <span class="text-xs font-bold px-2.5 py-0.5 rounded-full ${taskCorrect ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">
+                                    ${taskCorrect ? '+2 балла' : '0 баллов'}
+                                </span>
+                            </div>
+                            <div class="bg-slate-900 text-slate-100 rounded-xl p-3 font-mono text-xs sm:text-sm leading-relaxed overflow-x-auto">
+                                <pre class="m-0"><code>${highlightedCode}</code></pre>
+                            </div>
+                        </div>
+                        <div class="mt-3 space-y-1.5">
+                            ${varComparisons.join('')}
+                        </div>
+                    </div>
+                `);
+            });
+
+            const totalPoints = correctCount * 2;
+            const percent = Math.round((totalPoints / 20) * 100);
+            const matchedScale = GRADING_SCALE.find(s => percent >= s.min && percent <= s.max) || GRADING_SCALE[GRADING_SCALE.length - 1];
+            const completedAtStr = new Date().toLocaleString('ru-RU', {
+                day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+
+            document.getElementById('res-variant').textContent = `Вариант #${currentVariantId}`;
+            document.getElementById('res-student').textContent = `${studentName} (${studentClass})`;
+            document.getElementById('res-timestamp').textContent = completedAtStr;
+
+            document.getElementById('res-correct').textContent = String(correctCount);
+            document.getElementById('res-points').textContent = String(totalPoints);
+            document.getElementById('res-percent').textContent = String(percent);
+            document.getElementById('res-grade').textContent = matchedScale.grade;
+
+            // Стилизация карточки итоговой оценки
+            const gradeCard = document.getElementById('res-grade-card');
+            const gradeLabel = document.getElementById('res-grade-label');
+            const gradeValue = document.getElementById('res-grade');
+
+            gradeCard.className = 'rounded-2xl p-4 border-2 text-center';
+            if (matchedScale.grade === '10' || matchedScale.grade === '9') {
+                gradeCard.classList.add('bg-emerald-50', 'border-emerald-500');
+                gradeLabel.className = 'text-xs font-bold uppercase tracking-wide text-emerald-700';
+                gradeValue.className = 'text-3xl sm:text-4xl font-black mt-0.5 text-emerald-600';
+            } else if (matchedScale.grade === '8' || matchedScale.grade === '7') {
+                gradeCard.classList.add('bg-indigo-50', 'border-indigo-500');
+                gradeLabel.className = 'text-xs font-bold uppercase tracking-wide text-indigo-700';
+                gradeValue.className = 'text-3xl sm:text-4xl font-black mt-0.5 text-indigo-600';
+            } else if (matchedScale.grade === '6' || matchedScale.grade === '5') {
+                gradeCard.classList.add('bg-amber-50', 'border-amber-500');
+                gradeLabel.className = 'text-xs font-bold uppercase tracking-wide text-amber-700';
+                gradeValue.className = 'text-3xl sm:text-4xl font-black mt-0.5 text-amber-600';
+            } else {
+                gradeCard.classList.add('bg-rose-50', 'border-rose-500');
+                gradeLabel.className = 'text-xs font-bold uppercase tracking-wide text-rose-700';
+                gradeValue.className = 'text-2xl sm:text-3xl font-black mt-1 text-rose-600';
+            }
+
+            // Отрисовка шкалы оценивания с подсветкой полученного диапазона
+            const scaleGrid = document.getElementById('grading-scale-grid');
+            scaleGrid.innerHTML = GRADING_SCALE.map(item => {
+                const isActive = item.grade === matchedScale.grade;
+                const activeClasses = isActive
+                    ? 'bg-indigo-600 text-white border-indigo-600 ring-2 ring-indigo-300 shadow-md scale-105 font-bold'
+                    : 'bg-white text-slate-600 border-slate-200';
+                return `
+                    <div class="rounded-xl border p-2.5 transition ${activeClasses}">
+                        <div class="text-sm sm:text-base font-extrabold">${item.grade}</div>
+                        <div class="text-[11px] opacity-85 mt-0.5">${item.label}</div>
+                    </div>
+                `;
+            }).join('');
+
+            const commentEl = document.getElementById('res-grade-comment');
+            if (percent < 25) {
+                commentEl.textContent = `Набрано ${percent}% (менее 25%). Результат: Незачёт (менее 5). Повторите порядок выполнения операций в C++ и попробуйте новый вариант.`;
+            } else {
+                commentEl.textContent = `Результат ${percent}% соответствует диапазону ${matchedScale.label} — итоговая оценка: «${matchedScale.grade}».`;
+            }
+
+            document.getElementById('review-list').innerHTML = reviewHtmlParts.join('');
+
+            // Сохраняем полные данные отчёта (включая все 10 заданий варианта) для PDF формата A4
+            lastReportData = {
+                variantId: currentVariantId,
+                studentName: studentName,
+                studentClass: studentClass,
+                completedAt: completedAtStr,
+                correctCount: correctCount,
+                totalPoints: totalPoints,
+                percent: percent,
+                grade: matchedScale.grade,
+                gradeLabel: matchedScale.label,
+                tasks: pdfTasksData
+            };
+
+            // Переключение экранов
+            document.getElementById('quiz-workspace').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // Автоматическое формирование и скачивание PDF формата A4
+            exportResultsToPdfA4(lastReportData);
+        }
+
+        /**
+         * Построение HTML-шаблона формата A4 (210мм x 297мм) со всеми 10 заданиями варианта ученика
+         */
+        function buildPdfReportHtml(report) {
+            const rowsHtml = report.tasks.map(t => {
+                const codeHtml = t.codeLines
+                    .map(line => escapeHtml(line))
+                    .join(' &nbsp; ');
+
+                const userAnswersHtml = t.vars
+                    .map(v => `<span style="display: inline-block; margin-right: 10px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: ${v.isRight ? '#065f46' : '#9f1239'};"><strong>${escapeHtml(v.varName)}</strong> = ${escapeHtml(v.userVal)}</span>`)
+                    .join('');
+
+                const correctAnswersHtml = t.vars
+                    .map(v => `<span style="display: inline-block; margin-right: 10px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: #0f172a;"><strong>${escapeHtml(v.varName)}</strong> = ${escapeHtml(v.expectedVal)}</span>`)
+                    .join('');
+
+                let statusBg = '#ffe4e6';
+                let statusColor = '#9f1239';
+                if (t.statusText === 'Верно') {
+                    statusBg = '#d1fae5';
+                    statusColor = '#065f46';
+                } else if (t.statusText === 'Не выполнено') {
+                    statusBg = '#f1f5f9';
+                    statusColor = '#475569';
+                }
+
+                return `
+                    <tr>
+                        <td style="text-align: center; font-weight: 700; width: 5%; font-size: 10.5px;">${t.id}</td>
+                        <td style="font-family: 'JetBrains Mono', monospace; font-size: 9.5px; line-height: 1.25; background-color: #f8fafc; color: #0f172a; width: 39%;">${codeHtml}</td>
+                        <td style="width: 18%;">${userAnswersHtml}</td>
+                        <td style="width: 18%;">${correctAnswersHtml}</td>
+                        <td style="text-align: center; width: 20%; white-space: nowrap;">
+                            <span style="font-weight: 700; font-size: 10px; color: #0f172a; margin-right: 3px;">${t.points}/2 б.</span>
+                            <span style="display: inline-block; padding: 1px 4px; border-radius: 4px; font-size: 9px; font-weight: 700; background-color: ${statusBg}; color: ${statusColor};">${t.statusText}</span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            const scaleRefItems = [
+                { g: '10', r: '96–100%' },
+                { g: '9', r: '90–95%' },
+                { g: '8', r: '74–89%' },
+                { g: '7', r: '58–73%' },
+                { g: '6', r: '42–57%' },
+                { g: '5', r: '25–41%' },
+                { g: '<5 (Незачёт)', r: '0–24%' }
+            ].map(item => `
+                <td style="border: 1px solid #cbd5e1; padding: 2px 4px; text-align: center; font-size: 9.5px; background-color: ${report.grade === item.g || (report.grade === 'Незачёт' && item.g.startsWith('<5')) ? '#e0e7ff' : '#ffffff'};">
+                    <div style="font-weight: 700; color: #1e293b;">${item.g}</div>
+                    <div style="color: #475569;">${item.r}</div>
+                </td>
+            `).join('');
+
+            return `
+                <div class="pdf-page-a4">
+                    <!-- Шапка ведомости A4 -->
+                    <div style="border-bottom: 2px solid #1e293b; padding-bottom: 5px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: flex-end;">
+                        <div>
+                            <div style="font-size: 9.5px; font-weight: 700; text-transform: uppercase; color: #4338ca; letter-spacing: 0.04em;">Информатика • Программирование на C++</div>
+                            <h1 style="font-size: 15px; font-weight: 800; margin: 1px 0 0 0; color: #0f172a;">Результаты теста: Вычисление значений переменных</h1>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="display: inline-block; padding: 2px 8px; border: 1.5px solid #4338ca; border-radius: 6px; font-weight: 800; font-size: 11px; color: #312e81;">
+                                Вариант #${report.variantId}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Данные ученика и сводка баллов -->
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 6px;">
+                        <tr>
+                            <td style="border: 1px solid #cbd5e1; padding: 4px 8px; background-color: #f8fafc; width: 52%;">
+                                <div style="font-size: 9px; color: #64748b; text-transform: uppercase; font-weight: 600;">Фамилия, имя и класс ученика</div>
+                                <div style="font-size: 12px; font-weight: 700; color: #0f172a; margin-top: 1px;">${escapeHtml(report.studentName)} (${escapeHtml(report.studentClass)})</div>
+                                <div style="font-size: 9.5px; color: #475569; margin-top: 1px;">Дата и время сдачи: ${escapeHtml(report.completedAt)}</div>
+                            </td>
+                            <td style="border: 1px solid #cbd5e1; padding: 4px 6px; text-align: center; width: 12%;">
+                                <div style="font-size: 9px; color: #64748b; text-transform: uppercase; font-weight: 600;">Верно</div>
+                                <div style="font-size: 13px; font-weight: 800; color: #0f172a; margin-top: 2px;">${report.correctCount}/10</div>
+                            </td>
+                            <td style="border: 1px solid #cbd5e1; padding: 4px 6px; text-align: center; width: 12%;">
+                                <div style="font-size: 9px; color: #64748b; text-transform: uppercase; font-weight: 600;">Баллы</div>
+                                <div style="font-size: 13px; font-weight: 800; color: #4338ca; margin-top: 2px;">${report.totalPoints}/20</div>
+                            </td>
+                            <td style="border: 1px solid #cbd5e1; padding: 4px 6px; text-align: center; width: 11%;">
+                                <div style="font-size: 9px; color: #64748b; text-transform: uppercase; font-weight: 600;">Процент</div>
+                                <div style="font-size: 13px; font-weight: 800; color: #0f172a; margin-top: 2px;">${report.percent}%</div>
+                            </td>
+                            <td style="border: 1.5px solid #1e293b; padding: 4px 6px; text-align: center; background-color: #eef2ff; width: 13%;">
+                                <div style="font-size: 9px; color: #3730a3; text-transform: uppercase; font-weight: 700;">Оценка</div>
+                                <div style="font-size: 14px; font-weight: 900; color: #1e1b4b; margin-top: 1px;">${escapeHtml(report.grade)}</div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Полная таблица всех 10 заданий варианта -->
+                    <div style="font-size: 10.5px; font-weight: 700; color: #1e293b; margin-bottom: 2px;">
+                        Протокол выполнения всех заданий варианта #${report.variantId} (1–10):
+                    </div>
+                    <table class="pdf-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align: center; width: 5%;">№</th>
+                                <th style="width: 39%;">Программный код C++ (вариант ученика)</th>
+                                <th style="width: 18%;">Ответ ученика</th>
+                                <th style="width: 18%;">Правильный ответ</th>
+                                <th style="text-align: center; width: 20%;">Баллы и статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
+
+                    <!-- Справочная шкала оценивания и подпись преподавателя -->
+                    <div style="margin-top: 6px;">
+                        <div style="font-size: 9.5px; font-weight: 700; color: #475569; margin-bottom: 2px;">
+                            Справочная шкала оценивания:
+                        </div>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                ${scaleRefItems}
+                            </tr>
+                        </table>
+
+                        <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 10.5px; color: #1e293b;">
+                            <div>Подпись преподавателя: ________________________</div>
+                            <div>Дата проверки: «____» ______________ 202__ г.</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Экспорт и автоматическое скачивание отчёта в формате A4 (210мм x 297мм)
+         */
+        function exportResultsToPdfA4(report) {
+            if (!report) return;
+
+            const wrapper = document.getElementById('pdf-report-wrapper');
+            const statusTextEl = document.getElementById('pdf-status-text');
+            wrapper.innerHTML = buildPdfReportHtml(report);
+
+            const safeStudent = transliterateForFilename(report.studentName);
+            const safeClass = transliterateForFilename(report.studentClass);
+            const filename = `Test_Cpp_Var_${report.variantId}_${safeStudent}_${safeClass}.pdf`;
+
+            if (typeof window.html2pdf === 'function') {
+                if (statusTextEl) {
+                    statusTextEl.textContent = 'Формирование PDF (A4)...';
+                }
+
+                // Временно поднимаем блок в начало координат (0, 0) без сдвига,
+                // чтобы html2canvas захватил документ строго с самого верхнего края
+                const prevScrollY = window.scrollY;
+                window.scrollTo(0, 0);
+                wrapper.classList.add('is-rendering-pdf');
+
+                const pdfOptions = {
+                    margin: [10, 10, 10, 10],
+                    filename: filename,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: {
+                        scale: 2,
+                        useCORS: true,
+                        logging: false,
+                        x: 0,
+                        y: 0,
+                        scrollX: 0,
+                        scrollY: 0,
+                        width: 680
+                    },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+
+                window.html2pdf()
+                    .set(pdfOptions)
+                    .from(wrapper.firstElementChild)
+                    .save()
+                    .then(() => {
+                        wrapper.classList.remove('is-rendering-pdf');
+                        window.scrollTo(0, prevScrollY);
+                        if (statusTextEl) {
+                            statusTextEl.textContent = `PDF-отчёт (A4) сохранён: ${filename}`;
+                        }
+                        showToast(`Файл ${filename} сохранён в формате A4`);
+                    })
+                    .catch(() => {
+                        wrapper.classList.remove('is-rendering-pdf');
+                        window.scrollTo(0, prevScrollY);
+                        if (statusTextEl) {
+                            statusTextEl.textContent = 'Ошибка автосохранения — открыта печать A4';
+                        }
+                        window.print();
+                    });
+            } else {
+                // Резервный вариант при отсутствии доступа к CDN
+                if (statusTextEl) {
+                    statusTextEl.textContent = 'Открыто окно печати / сохранения в PDF (A4)';
+                }
+                window.print();
+            }
+        }
+
+        /**
+         * Запрос на генерацию нового варианта
+         */
+        function confirmNewVariant() {
+            if (isTestSubmitted) {
+                resetAndGenerateNew();
+                return;
+            }
+            saveCurrentInputs();
+            const hasAnyAnswer = answers.some((ansObj, idx) =>
+                questionsData[idx].vars.some(v => String(ansObj[v] ?? '').trim() !== '')
+            );
+
+            if (hasAnyAnswer) {
+                document.getElementById('confirm-modal').classList.remove('hidden');
+            } else {
+                resetAndGenerateNew();
+            }
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+        }
+
+        /**
+         * Полный сброс и создание нового варианта
+         */
+        function resetAndGenerateNew() {
+            isTestSubmitted = false;
+            lastReportData = null;
+            currentIndex = 0;
+            currentVariantId = generateVariantNumber();
+            document.getElementById('variant-badge').textContent = `Вариант #${currentVariantId}`;
+
+            document.getElementById('student-name').disabled = false;
+            document.getElementById('student-class').disabled = false;
+
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('quiz-workspace').classList.remove('hidden');
+
+            questionsData = generateQuestions();
+            initAnswers();
+            renderCurrentQuestion();
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            showToast(`Сформирован новый индивидуальный вариант #${currentVariantId}`);
+        }
+
+        /**
+         * Инициализация всех обработчиков событий и запуск приложения
+         */
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('current-date').textContent = new Date().toLocaleDateString('ru-RU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+
+            // Прямые слушатели на кнопки навигации и управления
+            document.getElementById('btn-prev').addEventListener('click', handlePrevStep);
+            document.getElementById('btn-next').addEventListener('click', handleNextStep);
+            document.getElementById('btn-finish-top').addEventListener('click', requestFinishTest);
+            document.getElementById('btn-finish-bottom').addEventListener('click', requestFinishTest);
+
+            document.getElementById('btn-new-variant').addEventListener('click', confirmNewVariant);
+            document.getElementById('btn-restart').addEventListener('click', resetAndGenerateNew);
+            document.getElementById('btn-download-pdf').addEventListener('click', () => {
+                if (lastReportData) {
+                    exportResultsToPdfA4(lastReportData);
+                }
+            });
+
+            document.getElementById('btn-cancel-variant').addEventListener('click', closeConfirmModal);
+            document.getElementById('btn-confirm-variant').addEventListener('click', () => {
+                closeConfirmModal();
+                resetAndGenerateNew();
+            });
+
+            document.getElementById('btn-cancel-finish').addEventListener('click', closeFinishConfirmModal);
+            document.getElementById('btn-confirm-finish').addEventListener('click', () => {
+                closeFinishConfirmModal();
+                finalizeTestSubmission();
+            });
+
+            // Генерация начального варианта
+            currentVariantId = generateVariantNumber();
+            document.getElementById('variant-badge').textContent = `Вариант #${currentVariantId}`;
+
+            questionsData = generateQuestions();
+            initAnswers();
+            renderCurrentQuestion();
+        });
+    </script>
 </body>
 </html>
