@@ -1,0 +1,431 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Тест по C++</title>
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #edf2f8;
+    color: #26344a;
+}
+
+.container {
+    max-width: 650px;
+    margin: 40px auto;
+    padding: 25px;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.header h1 {
+    color: #24558a;
+    font-size: 27px;
+}
+
+.card {
+    background: white;
+    border-radius: 18px;
+    padding: 30px;
+    box-shadow: 0 5px 20px #00000012;
+}
+
+.progress {
+    height: 9px;
+    background: #e1e8f0;
+    border-radius: 10px;
+    margin: 15px 0 25px;
+    overflow: hidden;
+}
+
+.bar {
+    height: 100%;
+    width: 10%;
+    background: #3984c6;
+    transition: .3s;
+}
+
+.question-number {
+    color: #3984c6;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.question {
+    background: #f0f5fb;
+    padding: 20px;
+    border-radius: 12px;
+    margin: 20px 0;
+}
+
+pre {
+    font-family: Consolas, monospace;
+    font-size: 17px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    color: #173d65;
+}
+
+.inputs {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin: 20px 0;
+}
+
+.field {
+    flex: 1;
+    min-width: 120px;
+}
+
+label {
+    display: block;
+    margin-bottom: 7px;
+    font-weight: bold;
+}
+
+input {
+    width: 100%;
+    padding: 13px;
+    border: 2px solid #d5e0eb;
+    border-radius: 9px;
+    font-size: 18px;
+    outline: none;
+}
+
+input:focus {
+    border-color: #3984c6;
+}
+
+button {
+    border: none;
+    padding: 13px 23px;
+    border-radius: 9px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 5px 5px 5px 0;
+}
+
+.check {
+    background: #245f99;
+    color: white;
+}
+
+.next {
+    background: #23865b;
+    color: white;
+}
+
+.result {
+    margin-top: 18px;
+    padding: 15px;
+    border-radius: 10px;
+    display: none;
+    line-height: 1.6;
+}
+
+.correct {
+    display: block;
+    background: #e3f5e9;
+    color: #176b39;
+}
+
+.wrong {
+    display: block;
+    background: #fff0e8;
+    color: #a34324;
+}
+
+#finish {
+    display: none;
+    text-align: center;
+}
+
+.score {
+    font-size: 30px;
+    color: #245f99;
+    font-weight: bold;
+}
+
+.small {
+    color: #718096;
+    font-size: 13px;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<div class="header">
+    <h1>Тест по C++</h1>
+    <p>Вычисление значений переменных</p>
+</div>
+
+<div class="card" id="test">
+
+    <div class="question-number" id="number"></div>
+
+    <div class="progress">
+        <div class="bar" id="bar"></div>
+    </div>
+
+    <div class="question">
+        <pre id="code"></pre>
+    </div>
+
+    <p>Введите конечные значения переменных:</p>
+
+    <div class="inputs">
+        <div class="field">
+            <label for="x">Значение x</label>
+            <input id="x" type="text" inputmode="decimal"
+                   placeholder="Введите x">
+        </div>
+
+        <div class="field" id="yField">
+            <label for="y">Значение y</label>
+            <input id="y" type="text" inputmode="decimal"
+                   placeholder="Введите y">
+        </div>
+    </div>
+
+    <button class="check" id="check" onclick="checkAnswer()">
+        Проверить
+    </button>
+
+    <div class="result" id="feedback"></div>
+
+    <div style="margin-top:20px">
+        <button class="next" id="next" onclick="nextQuestion()"
+                style="display:none">
+            Следующий вопрос →
+        </button>
+    </div>
+
+    <p class="small" id="hint">
+        Введите ответы и нажмите «Проверить».
+    </p>
+
+</div>
+
+<div class="card" id="finish">
+    <h2>Тест завершён!</h2>
+    <p>Ваш результат:</p>
+    <div class="score" id="score"></div>
+    <p id="grade"></p>
+    <button class="check" onclick="restart()">
+        Пройти ещё раз
+    </button>
+</div>
+
+</div>
+
+<script>
+const tasks = [
+{
+code: `x = 3;
+y = 2;
+x = x + y;`,
+x: 5, y: 2
+},
+{
+code: `x = 10;
+y = 4;
+x = x - y;
+y = x + 2;`,
+x: 6, y: 8
+},
+{
+code: `x = 5;
+y = 3;
+x = x * y;
+y = x / 5;`,
+x: 15, y: 3
+},
+{
+code: `x = 16;
+x = sqrt(x);
+x = x + 4;`,
+x: 8
+},
+{
+code: `x = 3;
+y = 2;
+x = x * x + y;`,
+x: 11, y: 2
+},
+{
+code: `x = 20;
+y = 5;
+x = x / y;
+y = y + x;`,
+x: 4, y: 9
+},
+{
+code: `x = 2;
+y = 3;
+x = pow(x, y);`,
+x: 8, y: 3
+},
+{
+code: `x = 25;
+y = 5;
+x = sqrt(x) + y;`,
+x: 10, y: 5
+},
+{
+code: `x = 4;
+y = 2;
+x = x * y;
+y = sqrt(x);`,
+x: 8, y: Math.sqrt(8)
+},
+{
+code: `x = 7;
+y = 3;
+x = x + y * 2;
+y = x - y;`,
+x: 13, y: 10
+}
+];
+
+let current = 0;
+let points = 0;
+let answered = false;
+
+function showQuestion() {
+    const t = tasks[current];
+
+    document.getElementById("number").textContent =
+        `ВОПРОС ${current + 1} ИЗ ${tasks.length}`;
+
+    document.getElementById("bar").style.width =
+        ((current + 1) / tasks.length * 100) + "%";
+
+    document.getElementById("code").textContent = t.code;
+
+    document.getElementById("x").value = "";
+    document.getElementById("y").value = "";
+
+    document.getElementById("yField").style.display =
+        t.y === undefined ? "none" : "block";
+
+    document.getElementById("feedback").className = "result";
+    document.getElementById("feedback").textContent = "";
+
+    document.getElementById("check").style.display = "inline-block";
+    document.getElementById("next").style.display = "none";
+
+    document.getElementById("hint").textContent =
+        "Введите ответы и нажмите «Проверить».";
+
+    answered = false;
+}
+
+function parseNumber(value) {
+    return Number(value.trim().replace(",", "."));
+}
+
+function isCorrect(value, expected) {
+    if (value.trim() === "") return false;
+    const n = parseNumber(value);
+    return Number.isFinite(n) &&
+        Math.abs(n - expected) <= 0.01;
+}
+
+function checkAnswer() {
+    if (answered) return;
+
+    const t = tasks[current];
+    const xv = document.getElementById("x").value;
+    const yv = document.getElementById("y").value;
+
+    if (xv.trim() === "" ||
+        (t.y !== undefined && yv.trim() === "")) {
+        alert("Введите все необходимые значения!");
+        return;
+    }
+
+    const xOK = isCorrect(xv, t.x);
+    const yOK = t.y === undefined || isCorrect(yv, t.y);
+
+    const feedback = document.getElementById("feedback");
+
+    if (xOK && yOK) {
+        points++;
+        feedback.className = "result correct";
+        feedback.innerHTML = "✓ Правильно! Все значения вычислены верно.";
+    } else {
+        feedback.className = "result wrong";
+        feedback.innerHTML =
+            "✗ Есть ошибка.<br>Правильный ответ: " +
+            "x = " + format(t.x) +
+            (t.y === undefined ? "" : "; y = " + format(t.y));
+    }
+
+    answered = true;
+
+    document.getElementById("check").style.display = "none";
+    document.getElementById("next").style.display = "inline-block";
+
+    document.getElementById("next").textContent =
+        current === tasks.length - 1 ?
+        "Завершить тест" : "Следующий вопрос →";
+}
+
+function format(n) {
+    return Number.isInteger(n) ? n : n.toFixed(2);
+}
+
+function nextQuestion() {
+    if (!answered) return;
+
+    current++;
+
+    if (current < tasks.length) {
+        showQuestion();
+    } else {
+        finishTest();
+    }
+}
+
+function finishTest() {
+    document.getElementById("test").style.display = "none";
+    document.getElementById("finish").style.display = "block";
+
+    document.getElementById("score").textContent =
+        points + " / " + tasks.length;
+
+    let grade = "";
+
+    if (points >= 9) grade = "Отличный результат!";
+    else if (points >= 7) grade = "Хороший результат!";
+    else if (points >= 5) grade = "Удовлетворительный результат.";
+    else grade = "Нужно повторить тему.";
+
+    document.getElementById("grade").textContent = grade;
+}
+
+function restart() {
+    current = 0;
+    points = 0;
+    document.getElementById("finish").style.display = "none";
+    document.getElementById("test").style.display = "block";
+    showQuestion();
+}
+
+showQuestion();
+</script>
+
+</body>
+</html>
