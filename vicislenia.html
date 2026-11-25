@@ -6,8 +6,8 @@
     <title>Тест по C++: Вычисление значений переменных</title>
     <!-- Подключение Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Подключение html2pdf.js для автоматического экспорта результатов в PDF формата A4 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- Подключение jsPDF для генерации PDF строго в размерах листа A4 (210 x 297 мм) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <!-- Подключение шрифтов Inter и JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -289,32 +289,20 @@
         let toastTimer = null;
 
         /**
-         * Вспомогательные функции
+         * Безопасное экранирование HTML
          */
-        function randInt(min, max) {
-            return Math.floor(Math.random() * (max - min + 1)) + min;
-        }
-
         function escapeHtml(str) {
-            return String(str)
+            return String(str ?? '')
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
 
-        function showToast(message) {
-            const toastEl = document.getElementById('toast-message');
-            const toastText = document.getElementById('toast-text');
-            if (!toastEl || !toastText) return;
-            toastText.textContent = message;
-            toastEl.classList.remove('hidden');
-            if (toastTimer) clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => {
-                toastEl.classList.add('hidden');
-            }, 3500);
-        }
-
+        /**
+         * Транслитерация кириллицы в безопасное имя файла
+         */
         function transliterateForFilename(text) {
             const map = {
                 'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
@@ -323,325 +311,378 @@
                 'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'shch',
                 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
             };
-            const clean = String(text || 'Student')
+            const cleaned = String(text || 'Student')
                 .toLowerCase()
                 .split('')
                 .map(ch => map[ch] !== undefined ? map[ch] : ch)
                 .join('')
-                .replace(/[^a-z0-9_-]+/g, '_')
+                .replace(/[^a-z0-9]+/g, '_')
                 .replace(/^_+|_+$/g, '');
-            return clean || 'Student';
-        }
-
-        function generateVariantNumber() {
-            let num;
-            do {
-                num = randInt(101, 999);
-            } while (String(num).includes('300'));
-            return num;
+            return cleaned || 'Student';
         }
 
         /**
-         * Однопроходный токенизатор C++ без числовых классов
+         * Всплывающее уведомление (без alert)
+         */
+        function showToast(message) {
+            const toastEl = document.getElementById('toast-message');
+            const textEl = document.getElementById('toast-text');
+            if (!toastEl || !textEl) return;
+            textEl.textContent = message;
+            toastEl.classList.remove('hidden');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toastEl.classList.add('hidden');
+            }, 3400);
+        }
+
+        /**
+         * Генерация случайного целого числа в диапазоне [min, max] без подстроки "300"
+         */
+        function randIntNo300(min, max) {
+            let val;
+            let guard = 0;
+            do {
+                val = Math.floor(Math.random() * (max - min + 1)) + min;
+                guard++;
+            } while (String(val).includes('300') && guard < 100);
+            return val;
+        }
+
+        /**
+         * Генерация номера варианта (101–999 без 300)
+         */
+        function generateVariantNumber() {
+            return randIntNo300(101, 999);
+        }
+
+        /**
+         * Однопроходный токенизатор C++ (без наложения HTML-тегов и без цифр в классах)
          */
         function highlightCppCode(line) {
-            const escaped = escapeHtml(line);
             const tokenRegex = /\b(sqrt|pow)\b|\b([xy])\b|\b(\d+(?:\.\d+)?)\b|([=+\-*/()])|(;)/g;
-            return escaped.replace(tokenRegex, (match, fn, variable, num, op, semi) => {
-                if (fn) return `<span class="tok-fn">${fn}</span>`;
-                if (variable) return `<span class="tok-var">${variable}</span>`;
-                if (num) return `<span class="tok-num">${num}</span>`;
-                if (op) return `<span class="tok-op">${op}</span>`;
-                if (semi) return `<span class="tok-semi">${semi}</span>`;
-                return match;
-            });
+            let result = '';
+            let lastIdx = 0;
+            let match;
+
+            while ((match = tokenRegex.exec(line)) !== null) {
+                if (match.index > lastIdx) {
+                    result += escapeHtml(line.slice(lastIdx, match.index));
+                }
+                if (match[1]) {
+                    result += `<span class="tok-fn">${escapeHtml(match[1])}</span>`;
+                } else if (match[2]) {
+                    result += `<span class="tok-var">${escapeHtml(match[2])}</span>`;
+                } else if (match[3]) {
+                    result += `<span class="tok-num">${escapeHtml(match[3])}</span>`;
+                } else if (match[4]) {
+                    result += `<span class="tok-op">${escapeHtml(match[4])}</span>`;
+                } else if (match[5]) {
+                    result += `<span class="tok-semi">${escapeHtml(match[5])}</span>`;
+                }
+                lastIdx = tokenRegex.lastIndex;
+            }
+            if (lastIdx < line.length) {
+                result += escapeHtml(line.slice(lastIdx));
+            }
+            return result;
         }
 
         /**
-         * Генерация 10 индивидуальных заданий по шаблонам теста
+         * Генерация 10 индивидуальных заданий для ученика по образцу теста
          */
         function generateQuestions() {
             // 1. x = a; y = b; x = x + y;
-            const q1x = randInt(2, 18);
-            const q1y = randInt(2, 15);
+            const q1x = randIntNo300(2, 18);
+            const q1y = randIntNo300(2, 15);
 
             // 2. x = a; y = b; x = x - y; y = x + c;
-            const q2y = randInt(2, 12);
-            const q2x = q2y + randInt(2, 14);
-            const q2c = randInt(2, 9);
+            const q2y = randIntNo300(3, 12);
+            const q2x = q2y + randIntNo300(2, 14);
+            const q2c = randIntNo300(2, 9);
 
-            // 3. x = a; y = b; x = x * y; y = x / d; (делится нацело)
-            const q3d = randInt(2, 6);
-            const q3x = q3d * randInt(1, 4);
-            const q3y = randInt(2, 6);
-            const q3ResX = q3x * q3y;
-            const q3ResY = q3ResX / q3d;
+            // 3. x = a; y = b; x = x * y; y = x / d; (целочисленное деление нацело)
+            const q3d = randIntNo300(2, 6);
+            const q3x = q3d * randIntNo300(1, 3);
+            const q3y = randIntNo300(2, 7);
 
-            // 4. x = root^2; x = sqrt(x); x = x + c; (только x)
-            const q4root = randInt(2, 11);
-            const q4x = q4root * q4root;
-            const q4c = randInt(2, 12);
+            // 4. x = r^2; x = sqrt(x); x = x + c; (только переменная x)
+            const q4r = randIntNo300(2, 9);
+            const q4x = q4r * q4r;
+            const q4c = randIntNo300(2, 10);
 
             // 5. x = a; y = b; x = x * x + y;
-            const q5x = randInt(2, 9);
-            const q5y = randInt(1, 15);
+            const q5x = randIntNo300(2, 9);
+            const q5y = randIntNo300(2, 15);
 
             // 6. x = k * y; y = b; x = x / y; y = y + x;
-            const q6y = randInt(2, 9);
-            const q6k = randInt(2, 8);
+            const q6y = randIntNo300(2, 8);
+            const q6k = randIntNo300(2, 7);
             const q6x = q6y * q6k;
 
             // 7. x = a; y = b; x = pow(x, y);
-            const q7pairs = [
-                [2, 2], [2, 3], [2, 4], [2, 5],
-                [3, 2], [3, 3], [4, 2], [4, 3],
-                [5, 2], [5, 3], [6, 2], [7, 2], [8, 2], [9, 2]
+            const powPairs = [
+                [2, 2], [2, 3], [2, 4], [2, 5], [2, 6],
+                [3, 2], [3, 3], [3, 4],
+                [4, 2], [4, 3],
+                [5, 2], [5, 3],
+                [6, 2], [7, 2], [8, 2], [9, 2]
             ];
-            const [q7x, q7y] = q7pairs[randInt(0, q7pairs.length - 1)];
+            const [q7x, q7y] = powPairs[randIntNo300(0, powPairs.length - 1)];
 
-            // 8. x = root^2; y = b; x = sqrt(x) + y;
-            const q8root = randInt(2, 11);
-            const q8x = q8root * q8root;
-            const q8y = randInt(2, 14);
+            // 8. x = r^2; y = b; x = sqrt(x) + y;
+            const q8r = randIntNo300(2, 10);
+            const q8x = q8r * q8r;
+            const q8y = randIntNo300(2, 12);
 
-            // 9. x = a; y = b; x = x * y; y = sqrt(x); (полный квадрат или из образца)
-            const q9pairs = [
-                [2, 8], [8, 2], [3, 12], [12, 3],
-                [4, 9], [9, 4], [2, 18], [5, 20],
-                [4, 16], [9, 9], [4, 2], [3, 3], [6, 6]
+            // 9. x = a; y = b; x = x * y; y = sqrt(x); (x * y — точный квадрат или как в 9 задании)
+            const sqrtProdPairs = [
+                [2, 2], [4, 4], [3, 3], [5, 5], [6, 6],
+                [8, 2], [2, 8], [9, 4], [4, 9], [12, 3], [3, 12], [18, 2], [2, 18]
             ];
-            const [q9x, q9y] = q9pairs[randInt(0, q9pairs.length - 1)];
-            const q9ResX = q9x * q9y;
-            const q9ResY = Math.round(Math.sqrt(q9ResX) * 100) / 100;
+            const [q9x, q9y] = sqrtProdPairs[randIntNo300(0, sqrtProdPairs.length - 1)];
 
             // 10. x = a; y = b; x = x + y * c; y = x - y;
-            const q10x = randInt(3, 15);
-            const q10y = randInt(2, 8);
-            const q10c = randInt(2, 4);
-            const q10ResX = q10x + q10y * q10c;
-            const q10ResY = q10ResX - q10y;
+            const q10x = randIntNo300(3, 15);
+            const q10y = randIntNo300(2, 8);
+            const q10c = randIntNo300(2, 4);
+            const q10xFinal = q10x + q10y * q10c;
+            const q10yFinal = q10xFinal - q10y;
 
             return [
                 {
                     id: 1,
                     code: [`x = ${q1x};`, `y = ${q1y};`, `x = x + y;`],
                     vars: ['x', 'y'],
-                    expected: { x: q1x + q1y, y: q1y },
-                    hint: `Сначала x = ${q1x}, y = ${q1y}. Затем x становится равен ${q1x} + ${q1y} = ${q1x + q1y}, а y не меняется (${q1y}).`
+                    expected: { x: q1x + q1y, y: q1y }
                 },
                 {
                     id: 2,
                     code: [`x = ${q2x};`, `y = ${q2y};`, `x = x - y;`, `y = x + ${q2c};`],
                     vars: ['x', 'y'],
-                    expected: { x: q2x - q2y, y: (q2x - q2y) + q2c },
-                    hint: `x = ${q2x} - ${q2y} = ${q2x - q2y}. Далее используется новое значение x: y = ${q2x - q2y} + ${q2c} = ${(q2x - q2y) + q2c}.`
+                    expected: { x: q2x - q2y, y: (q2x - q2y) + q2c }
                 },
                 {
                     id: 3,
                     code: [`x = ${q3x};`, `y = ${q3y};`, `x = x * y;`, `y = x / ${q3d};`],
                     vars: ['x', 'y'],
-                    expected: { x: q3ResX, y: q3ResY },
-                    hint: `x = ${q3x} * ${q3y} = ${q3ResX}. Затем y = ${q3ResX} / ${q3d} = ${q3ResY}.`
+                    expected: { x: q3x * q3y, y: Math.trunc((q3x * q3y) / q3d) }
                 },
                 {
                     id: 4,
                     code: [`x = ${q4x};`, `x = sqrt(x);`, `x = x + ${q4c};`],
                     vars: ['x'],
-                    expected: { x: q4root + q4c },
-                    hint: `sqrt(${q4x}) = ${q4root}. Затем x = ${q4root} + ${q4c} = ${q4root + q4c}.`
+                    expected: { x: q4r + q4c }
                 },
                 {
                     id: 5,
                     code: [`x = ${q5x};`, `y = ${q5y};`, `x = x * x + y;`],
                     vars: ['x', 'y'],
-                    expected: { x: q5x * q5x + q5y, y: q5y },
-                    hint: `Сначала умножение: ${q5x} * ${q5x} = ${q5x * q5x}, затем + ${q5y} = ${q5x * q5x + q5y}. Значение y остаётся ${q5y}.`
+                    expected: { x: q5x * q5x + q5y, y: q5y }
                 },
                 {
                     id: 6,
                     code: [`x = ${q6x};`, `y = ${q6y};`, `x = x / y;`, `y = y + x;`],
                     vars: ['x', 'y'],
-                    expected: { x: q6k, y: q6y + q6k },
-                    hint: `x = ${q6x} / ${q6y} = ${q6k}. Затем y = ${q6y} + ${q6k} = ${q6y + q6k}.`
+                    expected: { x: q6k, y: q6y + q6k }
                 },
                 {
                     id: 7,
                     code: [`x = ${q7x};`, `y = ${q7y};`, `x = pow(x, y);`],
                     vars: ['x', 'y'],
-                    expected: { x: Math.pow(q7x, q7y), y: q7y },
-                    hint: `pow(${q7x}, ${q7y}) — это ${q7x} в степени ${q7y}, то есть ${Math.pow(q7x, q7y)}. Переменная y остаётся ${q7y}.`
+                    expected: { x: Math.pow(q7x, q7y), y: q7y }
                 },
                 {
                     id: 8,
                     code: [`x = ${q8x};`, `y = ${q8y};`, `x = sqrt(x) + y;`],
                     vars: ['x', 'y'],
-                    expected: { x: q8root + q8y, y: q8y },
-                    hint: `sqrt(${q8x}) = ${q8root}, прибавляем y (${q8y}): x = ${q8root + q8y}. Переменная y = ${q8y}.`
+                    expected: { x: q8r + q8y, y: q8y }
                 },
                 {
                     id: 9,
                     code: [`x = ${q9x};`, `y = ${q9y};`, `x = x * y;`, `y = sqrt(x);`],
                     vars: ['x', 'y'],
-                    expected: { x: q9ResX, y: q9ResY },
-                    hint: `x = ${q9x} * ${q9y} = ${q9ResX}. Затем y = sqrt(${q9ResX}) = ${q9ResY}.`
+                    expected: { x: q9x * q9y, y: Math.round(Math.sqrt(q9x * q9y) * 100) / 100 }
                 },
                 {
                     id: 10,
                     code: [`x = ${q10x};`, `y = ${q10y};`, `x = x + y * ${q10c};`, `y = x - y;`],
                     vars: ['x', 'y'],
-                    expected: { x: q10ResX, y: q10ResY },
-                    hint: `Сначала умножение: ${q10y} * ${q10c} = ${q10y * q10c}, затем x = ${q10x} + ${q10y * q10c} = ${q10ResX}. После этого y = ${q10ResX} - ${q10y} = ${q10ResY}.`
+                    expected: { x: q10xFinal, y: q10yFinal }
                 }
             ];
         }
 
+        /**
+         * Инициализация пустых ответов для всех 10 заданий
+         */
         function initAnswers() {
             answers = questionsData.map(q => {
-                const obj = {};
+                const entry = {};
                 q.vars.forEach(v => {
-                    obj[v] = '';
+                    entry[v] = '';
                 });
-                return obj;
+                return entry;
             });
         }
 
+        /**
+         * Сохранение текущих значений из полей ввода в массив answers
+         */
         function saveCurrentInputs() {
             const q = questionsData[currentIndex];
             if (!q) return;
             q.vars.forEach(v => {
-                const inputEl = document.getElementById(`input-var-${v}`);
+                const inputEl = document.getElementById(`ans-input-${v}`);
                 if (inputEl) {
                     answers[currentIndex][v] = inputEl.value.trim();
                 }
             });
         }
 
-        function isQuestionFilled(idx) {
+        /**
+         * Проверка, заполнено ли задание полностью
+         */
+        function isQuestionComplete(idx) {
             const q = questionsData[idx];
-            const ansObj = answers[idx] || {};
-            return q.vars.every(v => String(ansObj[v] ?? '').trim() !== '');
+            if (!q) return false;
+            return q.vars.every(v => String(answers[idx]?.[v] ?? '').trim() !== '');
         }
 
-        function updateProgressUI() {
-            const filledCount = questionsData.reduce((acc, _, idx) => acc + (isQuestionFilled(idx) ? 1 : 0), 0);
-            document.getElementById('step-indicator').textContent = `Вопрос ${currentIndex + 1} из ${questionsData.length}`;
-            document.getElementById('answered-counter').textContent = String(filledCount);
+        /**
+         * Обновление верхней панели прогресса и кнопок шагов 1–10
+         */
+        function updateNavigationUI() {
+            const total = questionsData.length;
+            const stepInd = document.getElementById('step-indicator');
+            const ansCounter = document.getElementById('answered-counter');
+            const navHost = document.getElementById('step-nav-buttons');
+            const prevBtn = document.getElementById('btn-prev');
+            const nextLabel = document.getElementById('btn-next-label');
 
-            const navContainer = document.getElementById('step-nav-buttons');
-            navContainer.innerHTML = questionsData.map((q, idx) => {
-                const isActive = idx === currentIndex;
-                const isFilled = isQuestionFilled(idx);
+            if (stepInd) stepInd.textContent = `Вопрос ${currentIndex + 1} из ${total}`;
 
-                let btnClasses = 'py-2 rounded-xl text-xs font-bold border transition cursor-pointer ';
-                if (isActive) {
-                    btnClasses += 'bg-indigo-600 text-white border-indigo-600 shadow-xs ring-2 ring-indigo-200';
-                } else if (isFilled) {
-                    btnClasses += 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100';
-                } else {
-                    btnClasses += 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100';
+            let filledCount = 0;
+            for (let i = 0; i < total; i++) {
+                if (isQuestionComplete(i)) filledCount++;
+            }
+            if (ansCounter) ansCounter.textContent = String(filledCount);
+
+            if (navHost) {
+                navHost.innerHTML = '';
+                for (let i = 0; i < total; i++) {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.textContent = String(i + 1);
+                    const active = i === currentIndex;
+                    const done = isQuestionComplete(i);
+
+                    let cls = 'py-2 rounded-xl text-xs font-bold border transition cursor-pointer ';
+                    if (active) {
+                        cls += 'bg-indigo-600 text-white border-indigo-600 shadow-xs ring-2 ring-indigo-200';
+                    } else if (done) {
+                        cls += 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100';
+                    } else {
+                        cls += 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100';
+                    }
+                    btn.className = cls;
+                    btn.addEventListener('click', () => {
+                        saveCurrentInputs();
+                        currentIndex = i;
+                        renderCurrentQuestion();
+                    });
+                    navHost.appendChild(btn);
                 }
+            }
 
-                return `<button type="button" data-step-index="${idx}" class="${btnClasses}">${q.id}</button>`;
-            }).join('');
-
-            navContainer.querySelectorAll('button[data-step-index]').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const targetIdx = Number(btn.getAttribute('data-step-index'));
-                    goToStep(targetIdx);
-                });
-            });
-
-            const btnPrev = document.getElementById('btn-prev');
-            const btnNextLabel = document.getElementById('btn-next-label');
-            btnPrev.disabled = currentIndex === 0;
-
-            if (currentIndex === questionsData.length - 1) {
-                btnNextLabel.textContent = 'Завершить тест ✓';
-            } else {
-                btnNextLabel.textContent = 'Далее →';
+            if (prevBtn) prevBtn.disabled = currentIndex === 0;
+            if (nextLabel) {
+                nextLabel.textContent = currentIndex === total - 1 ? 'Завершить тест ✓' : 'Далее →';
             }
         }
 
+        /**
+         * Отрисовка текущей карточки вопроса
+         */
         function renderCurrentQuestion() {
             const q = questionsData[currentIndex];
-            if (!q) return;
+            const host = document.getElementById('single-question-host');
+            if (!q || !host) return;
 
-            const codeLinesHtml = q.code.map((line, i) => `
-                <div class="flex items-center gap-3 leading-relaxed">
-                    <span class="text-slate-500 select-none text-xs w-4 text-right">${i + 1}</span>
-                    <span>${highlightCppCode(line)}</span>
-                </div>
-            `).join('');
+            const highlightedLines = q.code
+                .map(line => `<div class="leading-relaxed">${highlightCppCode(line)}</div>`)
+                .join('');
 
-            const inputsHtml = q.vars.map((v, idx) => {
-                const savedVal = answers[currentIndex][v] ?? '';
+            const inputsHtml = q.vars.map((varName, vIdx) => {
+                const savedVal = escapeHtml(answers[currentIndex]?.[varName] ?? '');
                 return `
-                    <div class="flex-1 min-w-[135px]">
-                        <label for="input-var-${v}" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                            Конечное значение <span class="font-mono text-indigo-600 text-sm lowercase">${v}</span>
+                    <div class="flex items-center gap-3 bg-slate-50 rounded-xl px-4 py-3 border border-slate-200 focus-within:border-indigo-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-100 transition">
+                        <label for="ans-input-${varName}" class="font-mono text-lg font-extrabold text-indigo-700 select-none">
+                            ${varName} =
                         </label>
-                        <div class="relative flex items-center">
-                            <span class="absolute left-3.5 font-mono font-bold text-slate-400 select-none">${v} =</span>
-                            <input type="text"
-                                   id="input-var-${v}"
-                                   data-var-index="${idx}"
-                                   inputmode="decimal"
-                                   autocomplete="off"
-                                   placeholder="?"
-                                   value="${escapeHtml(savedVal)}"
-                                   class="w-full pl-12 pr-3.5 py-3 rounded-xl border-2 border-slate-200 bg-slate-50/70 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none font-mono text-base font-bold text-slate-900 placeholder:text-slate-300 transition">
-                        </div>
+                        <input type="text"
+                               id="ans-input-${varName}"
+                               data-var="${varName}"
+                               data-var-index="${vIdx}"
+                               value="${savedVal}"
+                               placeholder="?"
+                               inputmode="decimal"
+                               autocomplete="off"
+                               class="w-full bg-transparent font-mono text-lg font-bold text-slate-900 placeholder:text-slate-300 focus:outline-none">
                     </div>
                 `;
             }).join('');
 
-            const host = document.getElementById('single-question-host');
             host.innerHTML = `
-                <article class="question-step-enter bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="px-5 py-3.5 bg-slate-50/90 border-b border-slate-200 flex items-center justify-between">
+                <article class="question-step-enter bg-white rounded-2xl p-5 sm:p-6 shadow-xs border border-slate-200 space-y-5">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3.5">
                         <div class="flex items-center gap-2.5">
-                            <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-600 text-white text-xs font-extrabold">
+                            <span class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center justify-center text-sm font-extrabold">
                                 ${q.id}
                             </span>
-                            <h2 class="text-sm sm:text-base font-bold text-slate-800">
+                            <h2 class="text-base sm:text-lg font-extrabold text-slate-900">
                                 Задание ${q.id}
                             </h2>
                         </div>
-                        <span class="text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-lg">
+                        <span class="text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600">
                             2 балла
                         </span>
                     </div>
 
-                    <div class="p-5 sm:p-6 space-y-5">
-                        <div class="bg-slate-900 text-slate-100 rounded-xl p-4 sm:p-5 font-mono text-sm sm:text-base shadow-inner border border-slate-800 overflow-x-auto">
-                            ${codeLinesHtml}
-                        </div>
+                    <p class="text-sm text-slate-600">
+                        Определите конечные значения ${q.vars.length > 1 ? 'переменных <strong class="font-mono text-slate-900">x</strong> и <strong class="font-mono text-slate-900">y</strong>' : 'переменной <strong class="font-mono text-slate-900">x</strong>'} после выполнения фрагмента программы:
+                    </p>
 
-                        <div>
-                            <p class="text-xs font-semibold text-slate-500 mb-3">
-                                Введите конечные значения ${q.vars.length > 1 ? 'переменных' : 'переменной'} после выполнения всех строк:
-                            </p>
-                            <div class="flex flex-wrap gap-4">
-                                ${inputsHtml}
-                            </div>
+                    <div class="bg-slate-900 text-slate-100 rounded-2xl p-4 sm:p-5 font-mono text-base sm:text-lg shadow-inner overflow-x-auto">
+                        ${highlightedLines}
+                    </div>
+
+                    <div class="space-y-2.5">
+                        <div class="text-xs font-bold uppercase tracking-wider text-slate-500">
+                            Введите ответ:
+                        </div>
+                        <div class="grid grid-cols-1 ${q.vars.length > 1 ? 'sm:grid-cols-2' : ''} gap-3.5">
+                            ${inputsHtml}
                         </div>
                     </div>
                 </article>
             `;
 
-            const inputEls = host.querySelectorAll('input[data-var-index]');
-            inputEls.forEach((inp, idx) => {
+            // Обработчики ввода и клавиши Enter
+            q.vars.forEach((varName, vIdx) => {
+                const inp = document.getElementById(`ans-input-${varName}`);
+                if (!inp) return;
                 inp.addEventListener('input', () => {
                     saveCurrentInputs();
-                    updateProgressUI();
+                    updateNavigationUI();
                 });
-
                 inp.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        if (idx + 1 < inputEls.length) {
-                            inputEls[idx + 1].focus();
-                            inputEls[idx + 1].select();
+                        if (vIdx < q.vars.length - 1) {
+                            const nextVar = q.vars[vIdx + 1];
+                            const nextInp = document.getElementById(`ans-input-${nextVar}`);
+                            if (nextInp) nextInp.focus();
                         } else {
                             handleNextStep();
                         }
@@ -649,106 +690,117 @@
                 });
             });
 
-            updateProgressUI();
+            updateNavigationUI();
 
-            if (inputEls.length > 0) {
-                inputEls[0].focus();
+            const firstVar = q.vars[0];
+            const firstInp = document.getElementById(`ans-input-${firstVar}`);
+            if (firstInp && window.innerWidth >= 640) {
+                firstInp.focus();
             }
         }
 
-        function goToStep(targetIndex) {
-            if (targetIndex < 0 || targetIndex >= questionsData.length) return;
-            saveCurrentInputs();
-            currentIndex = targetIndex;
-            renderCurrentQuestion();
-        }
-
+        /**
+         * Переход на предыдущий вопрос
+         */
         function handlePrevStep() {
+            saveCurrentInputs();
             if (currentIndex > 0) {
-                goToStep(currentIndex - 1);
+                currentIndex--;
+                renderCurrentQuestion();
             }
         }
 
+        /**
+         * Переход на следующий вопрос или завершение на последнем
+         */
         function handleNextStep() {
             saveCurrentInputs();
             if (currentIndex < questionsData.length - 1) {
-                goToStep(currentIndex + 1);
+                currentIndex++;
+                renderCurrentQuestion();
             } else {
                 requestFinishTest();
             }
         }
 
-        function parseNumericAnswer(raw) {
-            if (raw === null || raw === undefined) return NaN;
-            const normalized = String(raw).trim().replace(',', '.');
-            if (normalized === '') return NaN;
-            return Number(normalized);
-        }
-
-        function isValueEqual(userRaw, expected) {
-            const parsed = parseNumericAnswer(userRaw);
-            if (!Number.isFinite(parsed)) return false;
-            return Math.abs(parsed - expected) < 0.02;
-        }
-
-        function calculateGradeByScale(percent) {
-            if (percent >= 96) {
-                return { grade: '10', comment: 'Отличный результат! Все вычисления выполнены безупречно.' };
-            }
-            if (percent >= 90) {
-                return { grade: '9', comment: 'Очень хорошо! Допущена лишь незначительная неточность.' };
-            }
-            if (percent >= 74) {
-                return { grade: '8', comment: 'Хороший результат! Уверенное владение операциями присваивания и выражениями.' };
-            }
-            if (percent >= 58) {
-                return { grade: '7', comment: 'Достаточный уровень, но стоит внимательнее следить за порядком выполнения команд.' };
-            }
-            if (percent >= 42) {
-                return { grade: '6', comment: 'Удовлетворительно. Рекомендуется повторить приоритет операций и функции <cmath>.' };
-            }
-            if (percent >= 25) {
-                return { grade: '5', comment: 'Слабый результат. Разберите ошибки ниже и попробуйте пройти новый вариант.' };
-            }
-            return { grade: 'Незачёт', comment: 'Набрано менее 25% баллов. Изучите разбор заданий и пройдите тест повторно.' };
-        }
-
+        /**
+         * Проверка перед завершением теста (если есть пропущенные задания — показываем подтверждение)
+         */
         function requestFinishTest() {
             saveCurrentInputs();
-
-            const nameVal = document.getElementById('student-name').value.trim();
-            const classVal = document.getElementById('student-class').value.trim();
-
-            if (!nameVal || !classVal) {
-                showToast('Пожалуйста, укажите Фамилию, имя и Класс перед завершением теста');
-                if (!nameVal) {
-                    document.getElementById('student-name').focus();
-                } else {
-                    document.getElementById('student-class').focus();
-                }
-                return;
+            let unfilledCount = 0;
+            for (let i = 0; i < questionsData.length; i++) {
+                if (!isQuestionComplete(i)) unfilledCount++;
             }
 
-            const unansweredCount = questionsData.reduce((acc, _, idx) => acc + (isQuestionFilled(idx) ? 0 : 1), 0);
-            if (unansweredCount > 0) {
-                document.getElementById('finish-confirm-text').textContent =
-                    `Осталось невыполненных заданий: ${unansweredCount} из 10. Незаполненные задания будут засчитаны как 0 баллов. Вы уверены, что хотите завершить тест?`;
-                document.getElementById('finish-confirm-modal').classList.remove('hidden');
+            if (unfilledCount > 0) {
+                const modal = document.getElementById('finish-confirm-modal');
+                const textEl = document.getElementById('finish-confirm-text');
+                if (textEl) {
+                    textEl.textContent = `У вас осталось невыполненных заданий: ${unfilledCount} из ${questionsData.length}. За пропущенные задания будет начислено 0 баллов. Вы уверены, что хотите завершить тест?`;
+                }
+                if (modal) modal.classList.remove('hidden');
             } else {
                 finalizeTestSubmission();
             }
         }
 
         function closeFinishConfirmModal() {
-            document.getElementById('finish-confirm-modal').classList.add('hidden');
+            const modal = document.getElementById('finish-confirm-modal');
+            if (modal) modal.classList.add('hidden');
         }
 
+        /**
+         * Определение оценки по шкале из таблицы
+         */
+        function getGradeByPercent(percent) {
+            if (percent >= 96) {
+                return { grade: '10', comment: 'Отличный результат! Все вычисления выполнены безупречно.', color: 'emerald' };
+            }
+            if (percent >= 90) {
+                return { grade: '9', comment: 'Очень высокий результат! Практически без ошибок.', color: 'emerald' };
+            }
+            if (percent >= 74) {
+                return { grade: '8', comment: 'Хороший результат! Уверенное владение операциями и функциями C++.', color: 'indigo' };
+            }
+            if (percent >= 58) {
+                return { grade: '7', comment: 'Неплохой результат, но стоит внимательнее следить за порядком операций.', color: 'indigo' };
+            }
+            if (percent >= 42) {
+                return { grade: '6', comment: 'Удовлетворительно. Рекомендуется повторить вычисление выражений.', color: 'amber' };
+            }
+            if (percent >= 25) {
+                return { grade: '5', comment: 'Минимальный порог пройден. Необходимо потренироваться в трассировке кода.', color: 'amber' };
+            }
+            return { grade: 'Незачёт', comment: 'Набрано менее 25%. Повторите тему и попробуйте пройти новый вариант.', color: 'rose' };
+        }
+
+        /**
+         * Сравнение введённого учеником числа с эталоном
+         */
+        function checkNumericMatch(rawInput, expectedVal) {
+            const cleaned = String(rawInput ?? '').trim().replace(',', '.');
+            if (cleaned === '') return false;
+            const parsed = Number(cleaned);
+            if (!Number.isFinite(parsed)) return false;
+            return Math.abs(parsed - expectedVal) < 0.015;
+        }
+
+        /**
+         * Подсчёт результатов, вывод разбора и автоматическое скачивание PDF
+         */
         function finalizeTestSubmission() {
             saveCurrentInputs();
             isTestSubmitted = true;
 
-            const studentName = document.getElementById('student-name').value.trim() || 'Ученик';
-            const studentClass = document.getElementById('student-class').value.trim() || '—';
+            const nameInput = document.getElementById('student-name');
+            const classInput = document.getElementById('student-class');
+            const studentName = (nameInput?.value || '').trim() || 'Ученик';
+            const studentClass = (classInput?.value || '').trim() || 'Без класса';
+
+            if (nameInput) nameInput.disabled = true;
+            if (classInput) classInput.disabled = true;
+
             const completedAt = new Date().toLocaleString('ru-RU', {
                 day: '2-digit',
                 month: '2-digit',
@@ -757,51 +809,51 @@
                 minute: '2-digit'
             });
 
-            document.getElementById('student-name').disabled = true;
-            document.getElementById('student-class').disabled = true;
-
             let correctCount = 0;
+            let totalPoints = 0;
+            const maxPoints = questionsData.length * 2;
+
             const taskReports = questionsData.map((q, idx) => {
                 const userAnsObj = answers[idx] || {};
-                const anyInputProvided = q.vars.some(v => String(userAnsObj[v] ?? '').trim() !== '');
+                const anyEntered = q.vars.some(v => String(userAnsObj[v] ?? '').trim() !== '');
 
-                const varsDetails = q.vars.map(v => {
+                const varsDetail = q.vars.map(v => {
                     const rawVal = String(userAnsObj[v] ?? '').trim();
-                    const expectedVal = q.expected[v];
-                    const isRight = isValueEqual(rawVal, expectedVal);
+                    const isRight = checkNumericMatch(rawVal, q.expected[v]);
                     return {
                         varName: v,
-                        userVal: rawVal === '' ? '—' : rawVal,
-                        expectedVal: String(expectedVal),
+                        userVal: rawVal === '' ? '—' : rawVal.replace('.', ','),
+                        expectedVal: String(q.expected[v]).replace('.', ','),
                         isRight
                     };
                 });
 
-                const allRight = varsDetails.every(item => item.isRight);
-                const points = allRight ? 2 : 0;
-                if (allRight) correctCount++;
+                const allVarsCorrect = varsDetail.every(vd => vd.isRight);
+                const points = allVarsCorrect ? 2 : 0;
+                if (allVarsCorrect) {
+                    correctCount++;
+                    totalPoints += 2;
+                }
 
                 let statusText = 'Ошибка';
-                if (allRight) {
+                if (allVarsCorrect) {
                     statusText = 'Верно';
-                } else if (!anyInputProvided) {
+                } else if (!anyEntered) {
                     statusText = 'Не выполнено';
                 }
 
                 return {
                     id: q.id,
                     codeLines: q.code,
-                    hint: q.hint,
-                    vars: varsDetails,
+                    vars: varsDetail,
                     points,
-                    isCorrect: allRight,
+                    isCorrect: allVarsCorrect,
                     statusText
                 };
             });
 
-            const totalPoints = correctCount * 2;
-            const percent = Math.round((totalPoints / 20) * 100);
-            const { grade, comment } = calculateGradeByScale(percent);
+            const percent = Math.round((totalPoints / maxPoints) * 100);
+            const gradeInfo = getGradeByPercent(percent);
 
             lastReportData = {
                 variantId: currentVariantId,
@@ -811,117 +863,102 @@
                 correctCount,
                 totalPoints,
                 percent,
-                grade,
-                comment,
+                grade: gradeInfo.grade,
                 tasks: taskReports
             };
 
-            renderResultsScreen(lastReportData);
-            exportResultsToPdfA4(lastReportData);
-        }
-
-        function renderResultsScreen(report) {
+            // Обновление интерфейса экрана результатов
             document.getElementById('quiz-workspace').classList.add('hidden');
             document.getElementById('result-screen').classList.remove('hidden');
 
-            document.getElementById('res-variant').textContent = `Вариант #${report.variantId}`;
-            document.getElementById('res-student').textContent = `${report.studentName} (${report.studentClass})`;
-            document.getElementById('res-timestamp').textContent = report.completedAt;
-
-            document.getElementById('res-correct').textContent = String(report.correctCount);
-            document.getElementById('res-points').textContent = String(report.totalPoints);
-            document.getElementById('res-percent').textContent = String(report.percent);
-            document.getElementById('res-grade').textContent = report.grade;
-            document.getElementById('res-grade-comment').textContent = report.comment;
+            document.getElementById('res-variant').textContent = `Вариант #${currentVariantId}`;
+            document.getElementById('res-student').textContent = `${studentName} (${studentClass})`;
+            document.getElementById('res-timestamp').textContent = completedAt;
+            document.getElementById('res-correct').textContent = String(correctCount);
+            document.getElementById('res-points').textContent = String(totalPoints);
+            document.getElementById('res-percent').textContent = String(percent);
+            document.getElementById('res-grade').textContent = gradeInfo.grade;
+            document.getElementById('res-grade-comment').textContent = gradeInfo.comment;
 
             const gradeCard = document.getElementById('res-grade-card');
             const gradeLabel = document.getElementById('res-grade-label');
-            const gradeValEl = document.getElementById('res-grade');
+            const gradeValue = document.getElementById('res-grade');
 
-            if (report.grade === 'Незачёт' || Number(report.grade) <= 5) {
-                gradeCard.className = 'bg-rose-50 rounded-2xl p-4 border-2 border-rose-500 text-center';
-                gradeLabel.className = 'text-xs font-semibold uppercase tracking-wide text-rose-700';
-                gradeValEl.className = 'text-2xl sm:text-3xl font-black mt-1 text-rose-700';
-            } else if (Number(report.grade) <= 7) {
-                gradeCard.className = 'bg-amber-50 rounded-2xl p-4 border-2 border-amber-500 text-center';
-                gradeLabel.className = 'text-xs font-semibold uppercase tracking-wide text-amber-700';
-                gradeValEl.className = 'text-2xl sm:text-3xl font-black mt-1 text-amber-700';
-            } else {
-                gradeCard.className = 'bg-emerald-50 rounded-2xl p-4 border-2 border-emerald-500 text-center';
-                gradeLabel.className = 'text-xs font-semibold uppercase tracking-wide text-emerald-700';
-                gradeValEl.className = 'text-2xl sm:text-3xl font-black mt-1 text-emerald-700';
-            }
+            const palette = {
+                emerald: ['bg-emerald-50 border-emerald-500', 'text-emerald-700', 'text-emerald-700'],
+                indigo: ['bg-indigo-50 border-indigo-500', 'text-indigo-700', 'text-indigo-700'],
+                amber: ['bg-amber-50 border-amber-500', 'text-amber-700', 'text-amber-700'],
+                rose: ['bg-rose-50 border-rose-500', 'text-rose-700', 'text-rose-700']
+            }[gradeInfo.color];
 
+            gradeCard.className = `${palette[0]} rounded-2xl p-4 border-2 text-center`;
+            gradeLabel.className = `text-xs font-semibold uppercase tracking-wide ${palette[1]}`;
+            gradeValue.className = `text-2xl sm:text-3xl font-black mt-1 ${palette[2]}`;
+
+            // Отрисовка шкалы оценивания
             const scaleItems = [
-                { g: '10', r: '96–100%' },
-                { g: '9', r: '90–95%' },
-                { g: '8', r: '74–89%' },
-                { g: '7', r: '58–73%' },
-                { g: '6', r: '42–57%' },
-                { g: '5', r: '25–41%' },
-                { g: 'Незачёт', r: '0–24%' }
+                { g: '10', range: '96–100%' },
+                { g: '9', range: '90–95%' },
+                { g: '8', range: '74–89%' },
+                { g: '7', range: '58–73%' },
+                { g: '6', range: '42–57%' },
+                { g: '5', range: '25–41%' },
+                { g: 'Незачёт', range: '0–24%' }
             ];
-
-            document.getElementById('grading-scale-grid').innerHTML = scaleItems.map(item => {
-                const isCurrent = report.grade === item.g;
+            const scaleGrid = document.getElementById('grading-scale-grid');
+            scaleGrid.innerHTML = scaleItems.map(item => {
+                const isCurrent = item.g === gradeInfo.grade;
                 return `
-                    <div class="rounded-xl p-2 border ${isCurrent ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs font-bold' : 'bg-white text-slate-700 border-slate-200'}">
-                        <div class="text-sm font-extrabold">${item.g}</div>
-                        <div class="text-[11px] ${isCurrent ? 'text-indigo-100' : 'text-slate-400'}">${item.r}</div>
+                    <div class="rounded-xl p-2 border ${isCurrent ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'bg-slate-50 text-slate-700 border-slate-200'}">
+                        <div class="text-sm font-black">${item.g}</div>
+                        <div class="text-[11px] ${isCurrent ? 'text-indigo-100' : 'text-slate-500'}">${item.range}</div>
                     </div>
                 `;
             }).join('');
 
-            document.getElementById('review-list').innerHTML = report.tasks.map(t => {
-                const badgeClass = t.isCorrect
+            // Отрисовка карточек разбора заданий
+            const reviewList = document.getElementById('review-list');
+            reviewList.innerHTML = taskReports.map(tr => {
+                const badgeCls = tr.isCorrect
                     ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                    : (t.statusText === 'Не выполнено'
+                    : tr.statusText === 'Не выполнено'
                         ? 'bg-slate-100 text-slate-600 border-slate-200'
-                        : 'bg-rose-100 text-rose-800 border-rose-200');
+                        : 'bg-rose-100 text-rose-800 border-rose-200';
 
-                const varsComparison = t.vars.map(v => `
+                const varsHtml = tr.vars.map(v => `
                     <div class="flex items-center justify-between text-xs py-1 border-b border-slate-100 last:border-b-0">
-                        <span class="font-mono font-bold text-slate-700">Переменная ${v.varName}:</span>
-                        <div class="flex items-center gap-3 font-mono">
-                            <span class="${v.isRight ? 'text-emerald-700 font-bold' : 'text-rose-600 font-semibold'}">
-                                Ваш ответ: ${escapeHtml(v.userVal)}
-                            </span>
-                            <span class="text-slate-500">
-                                Верно: <strong class="text-slate-900">${escapeHtml(v.expectedVal)}</strong>
-                            </span>
-                        </div>
+                        <span class="font-mono font-bold text-slate-700">${v.varName}:</span>
+                        <span>
+                            Ваш ответ: <strong class="font-mono ${v.isRight ? 'text-emerald-700' : 'text-rose-700'}">${escapeHtml(v.userVal)}</strong>
+                            ${!v.isRight ? ` • Верно: <strong class="font-mono text-slate-900">${escapeHtml(v.expectedVal)}</strong>` : ''}
+                        </span>
                     </div>
                 `).join('');
 
                 return `
-                    <div class="bg-white rounded-2xl border ${t.isCorrect ? 'border-emerald-200' : 'border-slate-200'} p-4 shadow-xs flex flex-col justify-between space-y-3">
-                        <div>
-                            <div class="flex items-center justify-between gap-2 mb-2.5">
-                                <span class="text-sm font-bold text-slate-800">Задание ${t.id}</span>
-                                <span class="text-xs font-bold px-2.5 py-0.5 rounded-full border ${badgeClass}">
-                                    ${t.statusText} (${t.points}/2 б.)
-                                </span>
-                            </div>
-                            <pre class="bg-slate-900 text-slate-100 rounded-xl p-3 font-mono text-xs leading-relaxed overflow-x-auto">${t.codeLines.map(highlightCppCode).join('\n')}</pre>
+                    <div class="bg-white rounded-2xl p-4 border ${tr.isCorrect ? 'border-emerald-200' : 'border-slate-200'} shadow-2xs space-y-2.5">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-sm font-extrabold text-slate-900">Задание ${tr.id}</span>
+                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full border ${badgeCls}">
+                                ${tr.statusText} (${tr.points}/2 б.)
+                            </span>
                         </div>
-
-                        <div class="space-y-1 pt-1">
-                            ${varsComparison}
+                        <pre class="bg-slate-900 text-slate-100 rounded-xl p-3 font-mono text-xs overflow-x-auto">${tr.codeLines.map(escapeHtml).join('\n')}</pre>
+                        <div class="bg-slate-50 rounded-xl px-3 py-2 border border-slate-200">
+                            ${varsHtml}
                         </div>
-
-                        <p class="text-xs text-slate-500 bg-slate-50 rounded-xl p-2.5 border border-slate-100">
-                            ${escapeHtml(t.hint)}
-                        </p>
                     </div>
                 `;
             }).join('');
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // Автоматическое скачивание PDF формата A4
+            exportResultsToPdfA4(lastReportData);
         }
 
         /**
-         * Построение автономного HTML-документа формата A4 (со встроенными стилями)
-         * для независимого рендеринга в html2pdf без сдвига на широких экранах
+         * Построение автономной HTML-разметки листа A4 (ровно 794 x 1123 px = 210 x 297 мм при 96 DPI)
          */
         function buildPdfReportHtml(report) {
             const rowsHtml = report.tasks.map(t => {
@@ -930,11 +967,11 @@
                     .join(' &nbsp; ');
 
                 const userAnswersHtml = t.vars
-                    .map(v => `<span style="display: inline-block; margin-right: 8px; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 10px; color: ${v.isRight ? '#065f46' : '#9f1239'};"><strong>${escapeHtml(v.varName)}</strong> = ${escapeHtml(v.userVal)}</span>`)
+                    .map(v => `<span style="display:inline-block;margin-right:8px;font-family:Consolas,'Courier New',monospace;font-size:11px;color:${v.isRight ? '#065f46' : '#9f1239'};"><strong>${escapeHtml(v.varName)}</strong> = ${escapeHtml(v.userVal)}</span>`)
                     .join('');
 
                 const correctAnswersHtml = t.vars
-                    .map(v => `<span style="display: inline-block; margin-right: 8px; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 10px; color: #0f172a;"><strong>${escapeHtml(v.varName)}</strong> = ${escapeHtml(v.expectedVal)}</span>`)
+                    .map(v => `<span style="display:inline-block;margin-right:8px;font-family:Consolas,'Courier New',monospace;font-size:11px;color:#0f172a;"><strong>${escapeHtml(v.varName)}</strong> = ${escapeHtml(v.expectedVal)}</span>`)
                     .join('');
 
                 let statusBg = '#ffe4e6';
@@ -949,13 +986,13 @@
 
                 return `
                     <tr>
-                        <td style="border: 1px solid #cbd5e1; padding: 3px 4px; text-align: center; font-weight: 700; width: 5%; font-size: 10px; vertical-align: middle;">${t.id}</td>
-                        <td style="border: 1px solid #cbd5e1; padding: 3px 5px; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 9.5px; line-height: 1.25; background-color: #f8fafc; color: #0f172a; width: 39%; vertical-align: middle; word-wrap: break-word;">${codeHtml}</td>
-                        <td style="border: 1px solid #cbd5e1; padding: 3px 5px; width: 18%; vertical-align: middle;">${userAnswersHtml}</td>
-                        <td style="border: 1px solid #cbd5e1; padding: 3px 5px; width: 18%; vertical-align: middle;">${correctAnswersHtml}</td>
-                        <td style="border: 1px solid #cbd5e1; padding: 3px 4px; text-align: center; width: 20%; vertical-align: middle; white-space: nowrap;">
-                            <span style="font-weight: 700; font-size: 9.5px; color: #0f172a; margin-right: 3px;">${t.points}/2 б.</span>
-                            <span style="display: inline-block; padding: 1px 4px; border-radius: 4px; font-size: 8.5px; font-weight: 700; background-color: ${statusBg}; color: ${statusColor};">${t.statusText}</span>
+                        <td style="border:1px solid #cbd5e1;padding:5px 4px;text-align:center;font-weight:700;width:5%;font-size:11px;">${t.id}</td>
+                        <td style="border:1px solid #cbd5e1;padding:5px 6px;font-family:Consolas,'Courier New',monospace;font-size:10.5px;background-color:#f8fafc;color:#0f172a;width:39%;">${codeHtml}</td>
+                        <td style="border:1px solid #cbd5e1;padding:5px 6px;width:18%;">${userAnswersHtml}</td>
+                        <td style="border:1px solid #cbd5e1;padding:5px 6px;width:18%;">${correctAnswersHtml}</td>
+                        <td style="border:1px solid #cbd5e1;padding:5px 4px;text-align:center;width:20%;white-space:nowrap;">
+                            <span style="font-weight:700;font-size:10.5px;color:#0f172a;margin-right:4px;">${t.points}/2 б.</span>
+                            <span style="display:inline-block;padding:2px 5px;border-radius:4px;font-size:9.5px;font-weight:700;background-color:${statusBg};color:${statusColor};">${t.statusText}</span>
                         </td>
                     </tr>
                 `;
@@ -970,66 +1007,61 @@
                 { g: '5', r: '25–41%' },
                 { g: '<5 (Незачёт)', r: '0–24%' }
             ].map(item => `
-                <td style="border: 1px solid #cbd5e1; padding: 3px 4px; text-align: center; font-size: 9px; background-color: ${report.grade === item.g || (report.grade === 'Незачёт' && item.g.startsWith('<5')) ? '#e0e7ff' : '#ffffff'};">
-                    <div style="font-weight: 700; color: #1e293b;">${item.g}</div>
-                    <div style="color: #475569;">${item.r}</div>
+                <td style="border:1px solid #cbd5e1;padding:4px 4px;text-align:center;font-size:10px;background-color:${report.grade === item.g || (report.grade === 'Незачёт' && item.g.startsWith('<5')) ? '#e0e7ff' : '#ffffff'};">
+                    <div style="font-weight:700;color:#1e293b;">${item.g}</div>
+                    <div style="color:#475569;">${item.r}</div>
                 </td>
             `).join('');
 
             return `
-                <div style="width: 100%; max-width: 710px; margin: 0; padding: 0; background: #ffffff; color: #0f172a; font-family: 'Inter', Arial, sans-serif; font-size: 11px; line-height: 1.25; box-sizing: border-box;">
-                    <!-- Шапка ведомости A4 -->
-                    <div style="border-bottom: 2px solid #1e293b; padding-bottom: 5px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div xmlns="http://www.w3.org/1999/xhtml" style="width:794px;height:1123px;padding:38px;margin:0;background:#ffffff;color:#0f172a;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.3;box-sizing:border-box;">
+                    <div style="border-bottom:2px solid #1e293b;padding-bottom:8px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-end;">
                         <div>
-                            <div style="font-size: 9px; font-weight: 700; text-transform: uppercase; color: #4338ca; letter-spacing: 0.04em;">Информатика • Программирование на C++</div>
-                            <h1 style="font-size: 15px; font-weight: 800; margin: 2px 0 0 0; color: #0f172a;">Результаты теста: Вычисление значений переменных</h1>
+                            <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#4338ca;letter-spacing:0.04em;">Информатика • Программирование на C++</div>
+                            <h1 style="font-size:17px;font-weight:800;margin:3px 0 0 0;color:#0f172a;">Результаты теста: Вычисление значений переменных</h1>
                         </div>
-                        <div style="text-align: right;">
-                            <div style="display: inline-block; padding: 2px 8px; border: 1.5px solid #4338ca; border-radius: 6px; font-weight: 800; font-size: 11px; color: #312e81;">
-                                Вариант #${report.variantId}
-                            </div>
+                        <div style="padding:3px 10px;border:1.5px solid #4338ca;border-radius:6px;font-weight:800;font-size:12px;color:#312e81;">
+                            Вариант #${report.variantId}
                         </div>
                     </div>
 
-                    <!-- Данные ученика и сводка баллов -->
-                    <table style="width: 100%; table-layout: fixed; border-collapse: collapse; margin-bottom: 6px;">
+                    <table style="width:100%;table-layout:fixed;border-collapse:collapse;margin-bottom:10px;">
                         <tr>
-                            <td style="border: 1px solid #cbd5e1; padding: 4px 8px; background-color: #f8fafc; width: 52%;">
-                                <div style="font-size: 8.5px; color: #64748b; text-transform: uppercase; font-weight: 600;">Фамилия, имя и класс ученика</div>
-                                <div style="font-size: 12px; font-weight: 700; color: #0f172a; margin-top: 1px;">${escapeHtml(report.studentName)} (${escapeHtml(report.studentClass)})</div>
-                                <div style="font-size: 9px; color: #475569; margin-top: 1px;">Дата и время сдачи: ${escapeHtml(report.completedAt)}</div>
+                            <td style="border:1px solid #cbd5e1;padding:6px 10px;background-color:#f8fafc;width:52%;">
+                                <div style="font-size:9px;color:#64748b;text-transform:uppercase;font-weight:600;">Фамилия, имя и класс ученика</div>
+                                <div style="font-size:13px;font-weight:700;color:#0f172a;margin-top:2px;">${escapeHtml(report.studentName)} (${escapeHtml(report.studentClass)})</div>
+                                <div style="font-size:10px;color:#475569;margin-top:2px;">Дата и время сдачи: ${escapeHtml(report.completedAt)}</div>
                             </td>
-                            <td style="border: 1px solid #cbd5e1; padding: 4px 4px; text-align: center; width: 12%;">
-                                <div style="font-size: 8.5px; color: #64748b; text-transform: uppercase; font-weight: 600;">Верно</div>
-                                <div style="font-size: 13px; font-weight: 800; color: #0f172a; margin-top: 2px;">${report.correctCount}/10</div>
+                            <td style="border:1px solid #cbd5e1;padding:6px 4px;text-align:center;width:12%;">
+                                <div style="font-size:9px;color:#64748b;text-transform:uppercase;font-weight:600;">Верно</div>
+                                <div style="font-size:15px;font-weight:800;color:#0f172a;margin-top:3px;">${report.correctCount}/10</div>
                             </td>
-                            <td style="border: 1px solid #cbd5e1; padding: 4px 4px; text-align: center; width: 12%;">
-                                <div style="font-size: 8.5px; color: #64748b; text-transform: uppercase; font-weight: 600;">Баллы</div>
-                                <div style="font-size: 13px; font-weight: 800; color: #4338ca; margin-top: 2px;">${report.totalPoints}/20</div>
+                            <td style="border:1px solid #cbd5e1;padding:6px 4px;text-align:center;width:12%;">
+                                <div style="font-size:9px;color:#64748b;text-transform:uppercase;font-weight:600;">Баллы</div>
+                                <div style="font-size:15px;font-weight:800;color:#4338ca;margin-top:3px;">${report.totalPoints}/20</div>
                             </td>
-                            <td style="border: 1px solid #cbd5e1; padding: 4px 4px; text-align: center; width: 11%;">
-                                <div style="font-size: 8.5px; color: #64748b; text-transform: uppercase; font-weight: 600;">Процент</div>
-                                <div style="font-size: 13px; font-weight: 800; color: #0f172a; margin-top: 2px;">${report.percent}%</div>
+                            <td style="border:1px solid #cbd5e1;padding:6px 4px;text-align:center;width:11%;">
+                                <div style="font-size:9px;color:#64748b;text-transform:uppercase;font-weight:600;">Процент</div>
+                                <div style="font-size:15px;font-weight:800;color:#0f172a;margin-top:3px;">${report.percent}%</div>
                             </td>
-                            <td style="border: 1.5px solid #1e293b; padding: 4px 4px; text-align: center; background-color: #eef2ff; width: 13%;">
-                                <div style="font-size: 8.5px; color: #3730a3; text-transform: uppercase; font-weight: 700;">Оценка</div>
-                                <div style="font-size: 14px; font-weight: 900; color: #1e1b4b; margin-top: 1px;">${escapeHtml(report.grade)}</div>
+                            <td style="border:1.5px solid #1e293b;padding:6px 4px;text-align:center;background-color:#eef2ff;width:13%;">
+                                <div style="font-size:9px;color:#3730a3;text-transform:uppercase;font-weight:700;">Оценка</div>
+                                <div style="font-size:16px;font-weight:900;color:#1e1b4b;margin-top:2px;">${escapeHtml(report.grade)}</div>
                             </td>
                         </tr>
                     </table>
 
-                    <!-- Полная таблица всех 10 заданий варианта -->
-                    <div style="font-size: 10px; font-weight: 700; color: #1e293b; margin-bottom: 3px;">
+                    <div style="font-size:11px;font-weight:700;color:#1e293b;margin-bottom:5px;">
                         Протокол выполнения всех заданий варианта #${report.variantId} (1–10):
                     </div>
-                    <table style="width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 2px;">
+                    <table style="width:100%;table-layout:fixed;border-collapse:collapse;">
                         <thead>
                             <tr>
-                                <th style="border: 1px solid #cbd5e1; padding: 3px 4px; background-color: #f1f5f9; font-weight: 700; font-size: 9.5px; color: #1e293b; text-align: center; width: 5%;">№</th>
-                                <th style="border: 1px solid #cbd5e1; padding: 3px 5px; background-color: #f1f5f9; font-weight: 700; font-size: 9.5px; color: #1e293b; text-align: left; width: 39%;">Программный код C++ (вариант ученика)</th>
-                                <th style="border: 1px solid #cbd5e1; padding: 3px 5px; background-color: #f1f5f9; font-weight: 700; font-size: 9.5px; color: #1e293b; text-align: left; width: 18%;">Ответ ученика</th>
-                                <th style="border: 1px solid #cbd5e1; padding: 3px 5px; background-color: #f1f5f9; font-weight: 700; font-size: 9.5px; color: #1e293b; text-align: left; width: 18%;">Правильный ответ</th>
-                                <th style="border: 1px solid #cbd5e1; padding: 3px 4px; background-color: #f1f5f9; font-weight: 700; font-size: 9.5px; color: #1e293b; text-align: center; width: 20%;">Баллы и статус</th>
+                                <th style="border:1px solid #cbd5e1;padding:5px 4px;background-color:#f1f5f9;font-weight:700;font-size:10px;color:#1e293b;text-align:center;width:5%;">№</th>
+                                <th style="border:1px solid #cbd5e1;padding:5px 6px;background-color:#f1f5f9;font-weight:700;font-size:10px;color:#1e293b;text-align:left;width:39%;">Программный код C++ (вариант ученика)</th>
+                                <th style="border:1px solid #cbd5e1;padding:5px 6px;background-color:#f1f5f9;font-weight:700;font-size:10px;color:#1e293b;text-align:left;width:18%;">Ответ ученика</th>
+                                <th style="border:1px solid #cbd5e1;padding:5px 6px;background-color:#f1f5f9;font-weight:700;font-size:10px;color:#1e293b;text-align:left;width:18%;">Правильный ответ</th>
+                                <th style="border:1px solid #cbd5e1;padding:5px 4px;background-color:#f1f5f9;font-weight:700;font-size:10px;color:#1e293b;text-align:center;width:20%;">Баллы и статус</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1037,18 +1069,17 @@
                         </tbody>
                     </table>
 
-                    <!-- Справочная шкала оценивания и подпись преподавателя -->
-                    <div style="margin-top: 6px;">
-                        <div style="font-size: 9px; font-weight: 700; color: #475569; margin-bottom: 2px;">
+                    <div style="margin-top:12px;">
+                        <div style="font-size:10px;font-weight:700;color:#475569;margin-bottom:4px;">
                             Справочная шкала оценивания:
                         </div>
-                        <table style="width: 100%; table-layout: fixed; border-collapse: collapse;">
+                        <table style="width:100%;table-layout:fixed;border-collapse:collapse;">
                             <tr>
                                 ${scaleRefItems}
                             </tr>
                         </table>
 
-                        <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #1e293b;">
+                        <div style="margin-top:18px;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#1e293b;">
                             <div>Подпись преподавателя: ________________________</div>
                             <div>Дата проверки: «____» ______________ 202__ г.</div>
                         </div>
@@ -1058,60 +1089,377 @@
         }
 
         /**
-         * Экспорт и автоматическое скачивание отчёта в формате A4 (210мм x 297мм)
-         * Передача HTML-строки напрямую в html2pdf изолирует рендеринг от ширины окна браузера
+         * Вспомогательная функция отрисовки скруглённого прямоугольника на Canvas
          */
-        function exportResultsToPdfA4(report) {
+        function drawRoundRect(ctx, x, y, w, h, r, fillStyle, strokeStyle, lineWidth = 1) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+            if (fillStyle) {
+                ctx.fillStyle = fillStyle;
+                ctx.fill();
+            }
+            if (strokeStyle) {
+                ctx.strokeStyle = strokeStyle;
+                ctx.lineWidth = lineWidth;
+                ctx.stroke();
+            }
+        }
+
+        /**
+         * Прямая попиксельная отрисовка бланка формата A4 (210 x 297 мм) на Canvas 1588x2246 px.
+         * Не использует foreignObject, iframe или DOM — на 100% идентично работает в любом браузере и на GitHub Pages.
+         */
+        function renderA4ReportToCanvas(report) {
+            const W = 1588; // 210 мм * 2x (96 DPI * 2)
+            const H = 2246; // 297 мм * 2x (96 DPI * 2)
+            const margin = 76; // 10 мм поля со всех сторон
+            const contentW = W - margin * 2;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = W;
+            canvas.height = H;
+            const ctx = canvas.getContext('2d');
+
+            // Белый фон листа A4
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, W, H);
+            ctx.textBaseline = 'top';
+
+            let y = margin;
+
+            // Шапка документа
+            ctx.fillStyle = '#4338ca';
+            ctx.font = '700 20px Arial, sans-serif';
+            ctx.fillText('ИНФОРМАТИКА • ПРОГРАММИРОВАНИЕ НА C++', margin, y);
+
+            // Бейдж варианта справа
+            const badgeW = 230;
+            const badgeH = 54;
+            drawRoundRect(ctx, W - margin - badgeW, y + 4, badgeW, badgeH, 12, '#eef2ff', '#4338ca', 3);
+            ctx.fillStyle = '#312e81';
+            ctx.font = '800 24px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Вариант #${report.variantId}`, W - margin - badgeW / 2, y + 18);
+            ctx.textAlign = 'left';
+
+            y += 30;
+            ctx.fillStyle = '#0f172a';
+            ctx.font = '800 33px Arial, sans-serif';
+            ctx.fillText('Результаты теста: Вычисление значений переменных', margin, y);
+
+            y += 50;
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(margin, y);
+            ctx.lineTo(W - margin, y);
+            ctx.stroke();
+
+            y += 22;
+
+            // Блок карточки ученика и сводки баллов
+            const summaryH = 128;
+            const colWidths = [
+                Math.round(contentW * 0.50),
+                Math.round(contentW * 0.12),
+                Math.round(contentW * 0.13),
+                Math.round(contentW * 0.11),
+                contentW - (Math.round(contentW * 0.50) + Math.round(contentW * 0.12) + Math.round(contentW * 0.13) + Math.round(contentW * 0.11))
+            ];
+
+            let cx = margin;
+            // Ячейка ФИО
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillRect(cx, y, colWidths[0], summaryH);
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(cx, y, colWidths[0], summaryH);
+
+            ctx.fillStyle = '#64748b';
+            ctx.font = '700 17px Arial, sans-serif';
+            ctx.fillText('ФАМИЛИЯ, ИМЯ И КЛАСС УЧЕНИКА', cx + 18, y + 16);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.font = '800 26px Arial, sans-serif';
+            const studentLine = `${report.studentName} (${report.studentClass})`;
+            ctx.fillText(studentLine.slice(0, 38), cx + 18, y + 46);
+
+            ctx.fillStyle = '#475569';
+            ctx.font = '400 19px Arial, sans-serif';
+            ctx.fillText(`Дата и время сдачи: ${report.completedAt}`, cx + 18, y + 86);
+            cx += colWidths[0];
+
+            // Ячейки Верно / Баллы / Процент / Оценка
+            const statCells = [
+                { label: 'ВЕРНО', val: `${report.correctCount}/10`, color: '#0f172a', bg: '#ffffff', border: '#cbd5e1', bw: 2 },
+                { label: 'БАЛЛЫ', val: `${report.totalPoints}/20`, color: '#4338ca', bg: '#ffffff', border: '#cbd5e1', bw: 2 },
+                { label: 'ПРОЦЕНТ', val: `${report.percent}%`, color: '#0f172a', bg: '#ffffff', border: '#cbd5e1', bw: 2 },
+                { label: 'ОЦЕНКА', val: String(report.grade), color: '#1e1b4b', bg: '#eef2ff', border: '#1e293b', bw: 3 }
+            ];
+
+            statCells.forEach((cell, i) => {
+                const w = colWidths[i + 1];
+                ctx.fillStyle = cell.bg;
+                ctx.fillRect(cx, y, w, summaryH);
+                ctx.strokeStyle = cell.border;
+                ctx.lineWidth = cell.bw;
+                ctx.strokeRect(cx, y, w, summaryH);
+
+                ctx.textAlign = 'center';
+                ctx.fillStyle = i === 3 ? '#3730a3' : '#64748b';
+                ctx.font = '700 16px Arial, sans-serif';
+                ctx.fillText(cell.label, cx + w / 2, y + 20);
+
+                ctx.fillStyle = cell.color;
+                ctx.font = i === 3 ? '900 32px Arial, sans-serif' : '800 30px Arial, sans-serif';
+                ctx.fillText(cell.val, cx + w / 2, y + 58);
+                ctx.textAlign = 'left';
+                cx += w;
+            });
+
+            y += summaryH + 28;
+
+            // Заголовок таблицы протокола
+            ctx.fillStyle = '#1e293b';
+            ctx.font = '700 22px Arial, sans-serif';
+            ctx.fillText(`Протокол выполнения всех заданий варианта #${report.variantId} (1–10):`, margin, y);
+            y += 34;
+
+            // Таблица заданий 1..10
+            const tCols = [
+                Math.round(contentW * 0.05), // №
+                Math.round(contentW * 0.41), // Код C++
+                Math.round(contentW * 0.17), // Ответ ученика
+                Math.round(contentW * 0.17), // Правильный ответ
+                contentW - (Math.round(contentW * 0.05) + Math.round(contentW * 0.41) + Math.round(contentW * 0.17) + Math.round(contentW * 0.17))
+            ];
+
+            const headH = 54;
+            const headers = ['№', 'Программный код C++ (вариант ученика)', 'Ответ ученика', 'Правильный ответ', 'Баллы и статус'];
+            cx = margin;
+            headers.forEach((hText, idx) => {
+                const w = tCols[idx];
+                ctx.fillStyle = '#f1f5f9';
+                ctx.fillRect(cx, y, w, headH);
+                ctx.strokeStyle = '#cbd5e1';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(cx, y, w, headH);
+
+                ctx.fillStyle = '#1e293b';
+                ctx.font = '700 19px Arial, sans-serif';
+                if (idx === 0 || idx === 4) {
+                    ctx.textAlign = 'center';
+                    ctx.fillText(hText, cx + w / 2, y + 17);
+                    ctx.textAlign = 'left';
+                } else {
+                    ctx.fillText(hText, cx + 14, y + 17);
+                }
+                cx += w;
+            });
+            y += headH;
+
+            const rowH = 126;
+            report.tasks.forEach(task => {
+                cx = margin;
+                // 1. Номер задания
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(cx, y, tCols[0], rowH);
+                ctx.strokeStyle = '#cbd5e1';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(cx, y, tCols[0], rowH);
+
+                ctx.fillStyle = '#0f172a';
+                ctx.font = '700 22px Arial, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(String(task.id), cx + tCols[0] / 2, y + rowH / 2 - 11);
+                ctx.textAlign = 'left';
+                cx += tCols[0];
+
+                // 2. Код C++ (построчно)
+                ctx.fillStyle = '#f8fafc';
+                ctx.fillRect(cx, y, tCols[1], rowH);
+                ctx.strokeStyle = '#cbd5e1';
+                ctx.strokeRect(cx, y, tCols[1], rowH);
+
+                ctx.fillStyle = '#0f172a';
+                ctx.font = '500 20px Consolas, "Courier New", monospace';
+                const lineStep = task.codeLines.length === 4 ? 27 : 33;
+                const startTextY = y + Math.max(12, Math.floor((rowH - task.codeLines.length * lineStep) / 2));
+                task.codeLines.forEach((line, lIdx) => {
+                    ctx.fillText(line, cx + 16, startTextY + lIdx * lineStep);
+                });
+                cx += tCols[1];
+
+                // 3. Ответ ученика
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(cx, y, tCols[2], rowH);
+                ctx.strokeStyle = '#cbd5e1';
+                ctx.strokeRect(cx, y, tCols[2], rowH);
+
+                const vStep = 34;
+                const vStartY = y + Math.floor((rowH - task.vars.length * vStep) / 2) + 4;
+                task.vars.forEach((v, vIdx) => {
+                    ctx.fillStyle = v.isRight ? '#065f46' : '#9f1239';
+                    ctx.font = '700 21px Consolas, "Courier New", monospace';
+                    ctx.fillText(`${v.varName} = ${v.userVal}`, cx + 16, vStartY + vIdx * vStep);
+                });
+                cx += tCols[2];
+
+                // 4. Правильный ответ
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(cx, y, tCols[3], rowH);
+                ctx.strokeStyle = '#cbd5e1';
+                ctx.strokeRect(cx, y, tCols[3], rowH);
+
+                task.vars.forEach((v, vIdx) => {
+                    ctx.fillStyle = '#0f172a';
+                    ctx.font = '700 21px Consolas, "Courier New", monospace';
+                    ctx.fillText(`${v.varName} = ${v.expectedVal}`, cx + 16, vStartY + vIdx * vStep);
+                });
+                cx += tCols[3];
+
+                // 5. Баллы и статус
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(cx, y, tCols[4], rowH);
+                ctx.strokeStyle = '#cbd5e1';
+                ctx.strokeRect(cx, y, tCols[4], rowH);
+
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#0f172a';
+                ctx.font = '700 21px Arial, sans-serif';
+                ctx.fillText(`${task.points} / 2 б.`, cx + tCols[4] / 2, y + 26);
+
+                let badgeBg = '#ffe4e6';
+                let badgeFg = '#9f1239';
+                if (task.statusText === 'Верно') {
+                    badgeBg = '#d1fae5';
+                    badgeFg = '#065f46';
+                } else if (task.statusText === 'Не выполнено') {
+                    badgeBg = '#f1f5f9';
+                    badgeFg = '#475569';
+                }
+                const stW = 196;
+                const stH = 38;
+                drawRoundRect(ctx, cx + (tCols[4] - stW) / 2, y + 62, stW, stH, 10, badgeBg, null);
+                ctx.fillStyle = badgeFg;
+                ctx.font = '700 18px Arial, sans-serif';
+                ctx.fillText(task.statusText, cx + tCols[4] / 2, y + 71);
+                ctx.textAlign = 'left';
+
+                y += rowH;
+            });
+
+            y += 28;
+
+            // Справочная шкала оценивания
+            ctx.fillStyle = '#475569';
+            ctx.font = '700 20px Arial, sans-serif';
+            ctx.fillText('Справочная шкала оценивания:', margin, y);
+            y += 30;
+
+            const scaleItems = [
+                { g: '10', r: '96–100%' },
+                { g: '9', r: '90–95%' },
+                { g: '8', r: '74–89%' },
+                { g: '7', r: '58–73%' },
+                { g: '6', r: '42–57%' },
+                { g: '5', r: '25–41%' },
+                { g: '<5 (Незачёт)', r: '0–24%' }
+            ];
+            const sColW = Math.floor(contentW / scaleItems.length);
+            const sRowH = 74;
+            cx = margin;
+
+            scaleItems.forEach((item, idx) => {
+                const w = idx === scaleItems.length - 1 ? (W - margin - cx) : sColW;
+                const isActive = report.grade === item.g || (report.grade === 'Незачёт' && item.g.startsWith('<5'));
+                ctx.fillStyle = isActive ? '#e0e7ff' : '#ffffff';
+                ctx.fillRect(cx, y, w, sRowH);
+                ctx.strokeStyle = isActive ? '#4338ca' : '#cbd5e1';
+                ctx.lineWidth = isActive ? 3 : 2;
+                ctx.strokeRect(cx, y, w, sRowH);
+
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#1e293b';
+                ctx.font = '700 20px Arial, sans-serif';
+                ctx.fillText(item.g, cx + w / 2, y + 14);
+
+                ctx.fillStyle = '#475569';
+                ctx.font = '400 18px Arial, sans-serif';
+                ctx.fillText(item.r, cx + w / 2, y + 42);
+                ctx.textAlign = 'left';
+                cx += w;
+            });
+
+            y += sRowH + 44;
+
+            // Строка подписи преподавателя
+            ctx.fillStyle = '#1e293b';
+            ctx.font = '500 21px Arial, sans-serif';
+            ctx.fillText('Подпись преподавателя: ________________________', margin, y);
+            ctx.textAlign = 'right';
+            ctx.fillText('Дата проверки: «____» ______________ 202__ г.', W - margin, y);
+            ctx.textAlign = 'left';
+
+            return canvas;
+        }
+
+        /**
+         * Экспорт строго в формат A4 (210 x 297 мм) без зависимости от DOM, iframe и foreignObject.
+         */
+        async function exportResultsToPdfA4(report) {
             if (!report) return;
 
             const reportHtml = buildPdfReportHtml(report);
             const wrapper = document.getElementById('pdf-report-wrapper');
             const statusTextEl = document.getElementById('pdf-status-text');
 
-            // Заполняем резервный контейнер на случай печати через window.print()
             wrapper.innerHTML = reportHtml;
 
             const safeStudent = transliterateForFilename(report.studentName);
             const safeClass = transliterateForFilename(report.studentClass);
             const filename = `Test_Cpp_Var_${report.variantId}_${safeStudent}_${safeClass}.pdf`;
 
-            if (typeof window.html2pdf === 'function') {
+            const jsPDFConstructor = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : window.jsPDF;
+
+            if (typeof jsPDFConstructor === 'function') {
                 if (statusTextEl) {
-                    statusTextEl.textContent = 'Формирование PDF (A4)...';
+                    statusTextEl.textContent = 'Формирование PDF-документа формата A4 (210 × 297 мм)...';
                 }
 
-                const pdfOptions = {
-                    margin: [10, 10, 10, 10],
-                    filename: filename,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: {
-                        scale: 2,
-                        useCORS: true,
-                        logging: false,
-                        scrollX: 0,
-                        scrollY: 0
-                    },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                };
-
-                window.html2pdf()
-                    .set(pdfOptions)
-                    .from(reportHtml, 'string')
-                    .save()
-                    .then(() => {
-                        if (statusTextEl) {
-                            statusTextEl.textContent = `PDF-отчёт (A4) сохранён: ${filename}`;
-                        }
-                        showToast(`Файл ${filename} сохранён в формате A4`);
-                    })
-                    .catch(() => {
-                        if (statusTextEl) {
-                            statusTextEl.textContent = 'Ошибка автосохранения — открыта печать A4';
-                        }
-                        window.print();
+                try {
+                    const canvas = renderA4ReportToCanvas(report);
+                    const imgData = canvas.toDataURL('image/jpeg', 0.96);
+                    const pdf = new jsPDFConstructor({
+                        orientation: 'portrait',
+                        unit: 'mm',
+                        format: 'a4'
                     });
+
+                    // Лист A4 ровно 210 x 297 мм от (0, 0) — без каких-либо сдвигов в любом браузере
+                    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+                    pdf.save(filename);
+
+                    if (statusTextEl) {
+                        statusTextEl.textContent = `PDF-отчёт (A4) сохранён: ${filename}`;
+                    }
+                    showToast(`Файл ${filename} сохранён в формате A4`);
+                } catch (err) {
+                    if (statusTextEl) {
+                        statusTextEl.textContent = 'Открыто окно печати / сохранения в PDF (A4)';
+                    }
+                    window.print();
+                }
             } else {
-                // Резервный вариант при отсутствии доступа к CDN
                 if (statusTextEl) {
                     statusTextEl.textContent = 'Открыто окно печати / сохранения в PDF (A4)';
                 }
